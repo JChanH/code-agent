@@ -1,8 +1,8 @@
 """Worktree 서비스 레이어 — 비즈니스 로직."""
 
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.exceptions.business import ConflictException, NotFoundException
 from app.models import UserWorktree
 from app.schemas import WorktreeCreate
 from app.utils.git import WorktreeManager
@@ -16,15 +16,15 @@ def list_worktrees(project_id: str, db: Session) -> list[UserWorktree]:
 def create_worktree(project_id: str, body: WorktreeCreate, db: Session) -> UserWorktree:
     user = user_repository.find_by_id(body.user_id, db)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise NotFoundException("User not found")
 
     project = project_repository.find_by_id(project_id, db)
     if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+        raise NotFoundException("Project not found")
 
     existing = worktree_repository.find_by_user_and_project(body.user_id, project_id, db)
     if existing:
-        raise HTTPException(status_code=409, detail="Worktree already exists for this user/project")
+        raise ConflictException("Worktree already exists for this user/project")
 
     if project.repo_url:
         mgr = WorktreeManager(project.repo_url)
@@ -42,6 +42,6 @@ def create_worktree(project_id: str, body: WorktreeCreate, db: Session) -> UserW
 def delete_worktree(worktree_id: str, db: Session) -> None:
     worktree = worktree_repository.find_by_id(worktree_id, db)
     if not worktree:
-        raise HTTPException(status_code=404, detail="Worktree not found")
+        raise NotFoundException("Worktree not found")
     worktree_repository.delete(worktree, db)
     db.commit()

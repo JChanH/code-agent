@@ -1,9 +1,9 @@
 """Project 서비스 레이어 — 비즈니스 로직."""
 
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.agents.security.profiles import DEFAULT_PROFILES
+from app.exceptions.business import NotFoundException
 from app.models import Project, SecurityProfile
 from app.schemas import ProjectCreate, ProjectUpdate
 from app.repositories import project_repository, security_profile_repository
@@ -16,7 +16,7 @@ def list_projects(db: Session) -> list[Project]:
 def get_project(project_id: str, db: Session) -> Project:
     project = project_repository.find_by_id(project_id, db)
     if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+        raise NotFoundException("Project not found")
     return project
 
 

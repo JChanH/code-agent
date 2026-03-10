@@ -1,8 +1,8 @@
 """Task 서비스 레이어 — 비즈니스 로직."""
 
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.exceptions.business import NotFoundException
 from app.models import Task
 from app.schemas import TaskCreate, TaskUpdate
 from app.repositories import task_repository
@@ -15,7 +15,7 @@ def list_tasks(project_id: str, db: Session) -> list[Task]:
 def get_task(task_id: str, db: Session) -> Task:
     task = task_repository.find_by_id(task_id, db)
     if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
+        raise NotFoundException("Task not found")
     return task
 
 

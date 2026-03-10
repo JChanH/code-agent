@@ -3,9 +3,10 @@
 import os
 import uuid
 
-from fastapi import HTTPException, UploadFile
+from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
+from app.exceptions.business import NotFoundException
 from app.models import Spec
 from app.schemas.enums import SpecSourceType
 from app.repositories import spec_repository
@@ -50,6 +51,6 @@ async def upload_spec(
 def delete_spec(spec_id: str, db: Session) -> None:
     spec = spec_repository.find_by_id(spec_id, db)
     if not spec:
-        raise HTTPException(status_code=404, detail="Spec not found")
+        raise NotFoundException("Spec not found")
     spec_repository.delete(spec, db)
     db.commit()

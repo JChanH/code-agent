@@ -2,6 +2,7 @@
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
@@ -18,6 +19,12 @@ from app.api import (
     worktrees_router,
 )
 from app.websocket import ws_manager
+from app.exceptions.business import BusinessException
+from app.exceptions.handlers import (
+    business_exception_handler,
+    global_exception_handler,
+    validation_exception_handler,
+)
 
 settings = get_settings()
 
@@ -34,6 +41,11 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+# ── Exception handlers ───────────────────────
+app.add_exception_handler(BusinessException, business_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(Exception, global_exception_handler)
 
 # CORS — allow Electron renderer (Vite dev server)
 app.add_middleware(
