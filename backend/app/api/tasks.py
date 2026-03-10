@@ -1,35 +1,37 @@
 """Task API router."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Task
 from app.schemas import TaskCreate, TaskResponse, TaskUpdate
 
+# GET /api/projects/{project_id}/tasks, POST /api/projects/{project_id}/tasks
+project_tasks_router = APIRouter(
+    prefix="/projects/{project_id}/tasks",
+    tags=["tasks"],
+)
+
+# GET /api/tasks/{task_id}, PATCH /api/tasks/{task_id}, DELETE /api/tasks/{task_id}
 tasks_router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
-@tasks_router.get("", response_model=list[TaskResponse])
-def list_tasks(
-    project_id: str = Query(None),
-    assigned_user_id: str = Query(None),
-    status: str = Query(None),
-    db: Session = Depends(get_db),
-):
-    q = db.query(Task)
-    if project_id:
-        q = q.filter(Task.project_id == project_id)
-    if assigned_user_id:
-        q = q.filter(Task.assigned_user_id == assigned_user_id)
-    if status:
-        q = q.filter(Task.status == status)
-    return q.order_by(Task.sort_order, Task.created_at).all()
+@project_tasks_router.get("", response_model=list[TaskResponse])
+def list_tasks(project_id: str, db: Session = Depends(get_db)):
+    return (
+        db.query(Task)
+        .filter(Task.project_id == project_id)
+        .order_by(Task.sort_order, Task.created_at)
+        .all()
+    )
 
 
-@tasks_router.post("", response_model=TaskResponse, status_code=201)
-def create_task(body: TaskCreate, db: Session = Depends(get_db)):
-    task = Task(**body.model_dump())
+@project_tasks_router.post("", response_model=TaskResponse, status_code=201)
+def create_task(project_id: str, body: TaskCreate, db: Session = Depends(get_db)):
+    data = body.model_dump()
+    data["project_id"] = project_id
+    task = Task(**data)
     db.add(task)
     db.commit()
     db.refresh(task)

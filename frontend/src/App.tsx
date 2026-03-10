@@ -1,35 +1,45 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { lazy, Suspense } from 'react';
+import Sidebar from './components/common/Sidebar';
+import { useAppStore } from './stores';
+import { useWebSocket } from './hooks/useWebSocket';
+import './App.css';
 
-function App() {
-  const [count, setCount] = useState(0)
+const DesignPhase = lazy(() => import('./pages/DesignPhase'));
+const DevPhase = lazy(() => import('./pages/DevPhase'));
+const GitManagement = lazy(() => import('./pages/GitManagement'));
+const Settings = lazy(() => import('./pages/Settings'));
+
+function MainContent() {
+  const { selectedProjectId, activeTab } = useAppStore();
+
+  if (!selectedProjectId) {
+    return (
+      <div className="empty-state">
+        <p>좌측에서 프로젝트를 선택하거나 새로 만드세요.</p>
+      </div>
+    );
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <Suspense fallback={<div className="loading">로딩 중...</div>}>
+      {activeTab === 'design' && <DesignPhase projectId={selectedProjectId} />}
+      {activeTab === 'dev' && <DevPhase projectId={selectedProjectId} />}
+      {activeTab === 'git' && <GitManagement projectId={selectedProjectId} />}
+      {activeTab === 'settings' && <Settings projectId={selectedProjectId} />}
+    </Suspense>
+  );
 }
 
-export default App
+export default function App() {
+  const selectedProjectId = useAppStore((s) => s.selectedProjectId);
+  useWebSocket(selectedProjectId);
+
+  return (
+    <div className="app-layout">
+      <Sidebar />
+      <main className="main-content">
+        <MainContent />
+      </main>
+    </div>
+  );
+}

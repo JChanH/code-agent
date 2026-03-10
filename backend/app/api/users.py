@@ -1,6 +1,6 @@
 """User and worktree API routers."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -14,6 +14,14 @@ from app.schemas import (
 from app.utils.git import WorktreeManager
 
 users_router = APIRouter(prefix="/users", tags=["users"])
+
+# GET /api/projects/{project_id}/worktrees, POST /api/projects/{project_id}/worktrees
+project_worktrees_router = APIRouter(
+    prefix="/projects/{project_id}/worktrees",
+    tags=["worktrees"],
+)
+
+# DELETE /api/worktrees/{worktree_id}
 worktrees_router = APIRouter(prefix="/worktrees", tags=["worktrees"])
 
 
@@ -42,26 +50,22 @@ def get_user(user_id: str, db: Session = Depends(get_db)):
     return user
 
 
-@worktrees_router.get("", response_model=list[WorktreeResponse])
-def list_worktrees(
-    project_id: str = Query(None),
-    user_id: str = Query(None),
-    db: Session = Depends(get_db),
-):
-    q = db.query(UserWorktree)
-    if project_id:
-        q = q.filter(UserWorktree.project_id == project_id)
-    if user_id:
-        q = q.filter(UserWorktree.user_id == user_id)
-    return q.all()
+@project_worktrees_router.get("", response_model=list[WorktreeResponse])
+def list_worktrees(project_id: str, db: Session = Depends(get_db)):
+    return (
+        db.query(UserWorktree)
+        .filter(UserWorktree.project_id == project_id)
+        .all()
+    )
 
 
-@worktrees_router.post("", response_model=WorktreeResponse, status_code=201)
-def create_worktree(body: WorktreeCreate, db: Session = Depends(get_db)):
+@project_worktrees_router.post("", response_model=WorktreeResponse, status_code=201)
+def create_worktree(project_id: str, body: WorktreeCreate, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == body.user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    project = db.query(Project).filter(Project.id == body.project_id).first()
+
+    project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
@@ -69,7 +73,7 @@ def create_worktree(body: WorktreeCreate, db: Session = Depends(get_db)):
         db.query(UserWorktree)
         .filter(
             UserWorktree.user_id == body.user_id,
-            UserWorktree.project_id == body.project_id,
+            UserWorktree.project_id == project_id,
         )
         .first()
     )
@@ -80,8 +84,19 @@ def create_worktree(body: WorktreeCreate, db: Session = Depends(get_db)):
         mgr = WorktreeManager(project.repo_url)
         mgr.create_worktree(body.user_id, body.branch_name)
 
-    worktree = UserWorktree(**body.model_dump())
+    data = body.model_dump()
+    data["project_id"] = project_id
+    worktree = UserWorktree(**data)
     db.add(worktree)
     db.commit()
     db.refresh(worktree)
     return worktree
+
+
+@worktrees_router.delete("/{worktree_id}", status_code=204)
+def delete_worktree(worktree_id: str, db: Session = Depends(get_db)):
+    worktree = db.query(UserWorktree).filter(UserWorktree.id == worktree_id).first()
+    if not worktree:
+        raise HTTPException(status_code=404, detail="Worktree not found")
+    db.delete(worktree)
+    db.commit()

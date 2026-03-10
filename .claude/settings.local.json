@@ -10,7 +10,9 @@
       "Bash(node_modules/.bin/electron --version)",
       "Bash(c:/workspace/auto_code_demo/agent_practice/code-agent/node_modules/electron/dist/electron.exe --version)",
       "Bash(c:/workspace/auto_code_demo/agent_practice/code-agent/backend/venv/Scripts/python -m uvicorn --version)",
-      "Bash(xargs wc:*)"
+      "Bash(xargs wc:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

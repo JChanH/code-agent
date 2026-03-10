@@ -9,6 +9,9 @@ from app.database import engine, Base
 from app.api import (
     agent_router,
     git_router,
+    project_specs_router,
+    project_tasks_router,
+    project_worktrees_router,
     projects_router,
     specs_router,
     tasks_router,
@@ -58,8 +61,11 @@ def health():
 # ── REST API routers ─────────────────────────
 app.include_router(projects_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
+app.include_router(project_worktrees_router, prefix="/api")
 app.include_router(worktrees_router, prefix="/api")
+app.include_router(project_tasks_router, prefix="/api")
 app.include_router(tasks_router, prefix="/api")
+app.include_router(project_specs_router, prefix="/api")
 app.include_router(specs_router, prefix="/api")
 app.include_router(git_router, prefix="/api")
 app.include_router(agent_router, prefix="/api")

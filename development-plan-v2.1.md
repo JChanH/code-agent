@@ -726,7 +726,7 @@ interface KanbanCard {
 [Backlog]     [Planning]      [Coding]       [Review]        [Done]
 ┌──────────┐ ┌──────────┐  ┌──────────┐  ┌──────────┐   ┌──────────┐
 │ Task A   │ │ Task D   │  │ Task E   │  │ Task F   │   │ Task G ✓ │
-│  @Kim    │ │  🤖 계획  │  │  🤖 코딩  │  │ 👤 대기   │   │ Task H ✓ │
+│  @Kim    │ │  🤖 계획 │  │  🤖 코딩  │  │ 👤 대기  │   │ Task H ✓ │
 │ Task B   │ │  수립중   │  │  진행중   │  │ [승인]    │   │          │
 │  @Kim    │ │          │  │  67%     │  │ [거절]    │   │          │
 │ [▶ 실행] │ │          │  │          │  │ [자동승인] │   │          │

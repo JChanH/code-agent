@@ -1,42 +1,116 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+/* ── Reset & Base ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f1117;
+  --bg-2: #1a1d27;
+  --bg-3: #22263a;
+  --border: #2d3150;
+  --text: #e2e8f0;
+  --text-muted: #6b7280;
+  --accent: #6366f1;
+  --accent-hover: #818cf8;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --sidebar-w: 220px;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
+html, body, #root { height: 100%; font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
+button { cursor: pointer; border: none; background: none; color: inherit; font-size: inherit; }
+input, textarea, select { font-size: inherit; color: inherit; background: var(--bg-3); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; outline: none; }
+input:focus, textarea:focus, select:focus { border-color: var(--accent); }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
+/* ── Layout ───────────────────────────────────────────────────────────────── */
+.app-layout { display: flex; height: 100vh; overflow: hidden; }
+.main-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
 
-.card {
-  padding: 2em;
-}
+/* ── Sidebar ──────────────────────────────────────────────────────────────── */
+.sidebar { width: var(--sidebar-w); background: var(--bg-2); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0; }
+.sidebar-logo { display: flex; align-items: center; gap: 8px; padding: 16px 14px; font-weight: 700; font-size: 15px; border-bottom: 1px solid var(--border); }
+.sidebar-section { padding: 10px 0; border-bottom: 1px solid var(--border); }
+.sidebar-section-header { display: flex; justify-content: space-between; align-items: center; padding: 4px 14px 6px; font-size: 11px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em; }
+.sidebar-section-header button { color: var(--text-muted); padding: 2px; border-radius: 4px; }
+.sidebar-section-header button:hover { color: var(--text); background: var(--bg-3); }
+.project-list, .tab-list { list-style: none; }
+.project-item, .tab-item { display: flex; align-items: center; gap: 8px; padding: 7px 14px; cursor: pointer; border-radius: 0; color: var(--text-muted); font-size: 13px; transition: background 0.15s; }
+.project-item:hover, .tab-item:hover { background: var(--bg-3); color: var(--text); }
+.project-item.active, .tab-item.active { background: var(--bg-3); color: var(--accent-hover); }
+.new-project-form { padding: 4px 10px; }
+.new-project-form input { width: 100%; }
+.sidebar-user { padding: 10px 14px; }
+.sidebar-user select { width: 100%; }
 
-.read-the-docs {
-  color: #888;
-}
+/* ── Page ─────────────────────────────────────────────────────────────────── */
+.page-container { display: flex; flex-direction: column; height: 100%; padding: 16px 20px; overflow: hidden; }
+.page-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-shrink: 0; }
+.page-header h2 { font-size: 16px; font-weight: 600; }
+.badge { background: var(--bg-3); border: 1px solid var(--border); border-radius: 12px; padding: 2px 10px; font-size: 12px; color: var(--text-muted); }
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); gap: 10px; }
+.loading { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); }
+.text-muted { color: var(--text-muted); }
+.user-filter { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+
+/* ── Dropzone ─────────────────────────────────────────────────────────────── */
+.dropzone { display: flex; align-items: center; gap: 10px; border: 2px dashed var(--border); border-radius: 8px; padding: 14px 18px; margin-bottom: 14px; color: var(--text-muted); cursor: pointer; transition: border-color 0.2s; flex-shrink: 0; }
+.dropzone:hover { border-color: var(--accent); color: var(--text); }
+
+/* ── Kanban Board ─────────────────────────────────────────────────────────── */
+.kanban-board { display: flex; gap: 12px; flex: 1; overflow-x: auto; overflow-y: hidden; padding-bottom: 8px; }
+.kanban-column { display: flex; flex-direction: column; min-width: 210px; flex: 1; background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.kanban-column.over { border-color: var(--accent); }
+.kanban-column-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.kanban-column-title { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.kanban-column-count { background: var(--bg-3); border-radius: 10px; padding: 1px 8px; font-size: 11px; color: var(--text-muted); }
+.kanban-column-body { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+
+/* ── Kanban Card ──────────────────────────────────────────────────────────── */
+.kanban-card { background: var(--bg-3); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; cursor: grab; transition: box-shadow 0.15s; }
+.kanban-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.3); border-color: var(--accent); }
+.kanban-card:active { cursor: grabbing; }
+.kanban-card-header { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.priority-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-left: auto; }
+.kanban-card-title { font-size: 13px; line-height: 1.4; }
+.kanban-card-assignee { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+
+/* ── Git Page ─────────────────────────────────────────────────────────────── */
+.git-page { padding: 16px 20px; }
+.git-layout { display: flex; gap: 12px; flex: 1; overflow: hidden; }
+.git-files { width: 300px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.git-files-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 600; color: var(--text-muted); flex-shrink: 0; }
+.git-files ul { flex: 1; overflow-y: auto; list-style: none; }
+.git-file-item { display: flex; align-items: center; gap: 6px; padding: 7px 10px; cursor: pointer; font-size: 12px; border-bottom: 1px solid var(--border); }
+.git-file-item:hover { background: var(--bg-3); }
+.git-file-item.active { background: var(--bg-3); border-left: 2px solid var(--accent); }
+.git-file-status { font-size: 10px; color: var(--accent-hover); font-weight: 600; min-width: 16px; }
+.git-file-path { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); }
+.revert-btn { opacity: 0; color: var(--danger); padding: 2px; }
+.git-file-item:hover .revert-btn { opacity: 1; }
+.git-commit-area { padding: 10px; border-top: 1px solid var(--border); flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; }
+.git-commit-area textarea { width: 100%; resize: none; font-size: 12px; }
+.git-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.git-log { border-top: 1px solid var(--border); flex-shrink: 0; max-height: 160px; overflow-y: auto; }
+.git-log-header { padding: 8px 12px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; border-bottom: 1px solid var(--border); }
+.git-log ul { list-style: none; }
+.git-log-item { display: flex; gap: 8px; align-items: baseline; padding: 6px 10px; border-bottom: 1px solid var(--border); font-size: 11px; }
+.git-log-hash { color: var(--accent-hover); font-family: monospace; flex-shrink: 0; }
+.git-log-msg { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.git-log-date { color: var(--text-muted); flex-shrink: 0; }
+.git-diff { flex: 1; display: flex; flex-direction: column; background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.git-diff-header { padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 12px; font-family: monospace; color: var(--text-muted); flex-shrink: 0; }
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+.btn-primary { display: flex; align-items: center; gap: 5px; background: var(--accent); color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; transition: background 0.15s; }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-secondary { display: flex; align-items: center; gap: 5px; background: var(--bg-3); color: var(--text); padding: 6px 10px; border-radius: 6px; font-size: 12px; border: 1px solid var(--border); transition: background 0.15s; }
+.btn-secondary:hover { background: var(--border); }
+.btn-sm { font-size: 11px; padding: 3px 8px; background: var(--bg-3); border: 1px solid var(--border); border-radius: 5px; color: var(--text-muted); }
+.btn-sm:hover { color: var(--text); }
+.btn-sm:disabled { opacity: 0.4; cursor: not-allowed; }
+.icon-btn { display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 5px; color: var(--text-muted); }
+.icon-btn:hover { background: var(--bg-3); color: var(--text); }
+
+/* ── Animations ───────────────────────────────────────────────────────────── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.animate-spin { animation: spin 1s linear infinite; }
