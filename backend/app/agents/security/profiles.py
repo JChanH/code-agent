@@ -11,7 +11,6 @@ DEFAULT_PROFILES: dict[str, dict] = {
             "pytest", "python -m pytest",
             "ruff check", "ruff format",
             "mypy", "black", "isort",
-            "alembic upgrade", "alembic downgrade", "alembic revision",
             "uvicorn",
             "python -c", "python -m",
         ],
@@ -26,7 +25,6 @@ DEFAULT_PROFILES: dict[str, dict] = {
         "allowed_path_patterns": [
             "app/**", "src/**",
             "tests/**", "test/**",
-            "alembic/**",
             "requirements.txt", "requirements-*.txt",
             "pyproject.toml", "setup.py", "setup.cfg",
             "*.py", "*.pyi",

@@ -74,19 +74,8 @@ code-agent/
 │   │   ├── schemas/   # Pydantic request/response schemas
 │   │   ├── services/  # Git, Worktree services
 │   │   └── websocket/ # Real-time updates
-│   └── alembic/       # DB migrations
 ├── electron/          # Electron main process
 └── shared/            # Shared types
 ```
 
-## Database Migrations
 
-```bash
-cd backend
-
-# Create a new migration
-alembic revision --autogenerate -m "description"
-
-# Apply migrations
-alembic upgrade head
-```

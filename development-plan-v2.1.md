@@ -163,7 +163,7 @@ main branch (보호됨, 직접 push 불가)
 | **Desktop Shell** | Electron 33+ | 요구사항 충족 |
 | **Backend** | Python 3.11+ / FastAPI | SDK 호환, 비동기 지원 |
 | **Agent SDK** | claude-agent-sdk (Python) | 요구사항 충족 |
-| **ORM** | SQLAlchemy 2.0 + Alembic | MySQL 호환, 마이그레이션 관리 |
+| **ORM** | SQLAlchemy 2.0 | MySQL 호환, 마이그레이션 관리 |
 | **DB** | MySQL 8.0 (외부) | 요구사항 충족 |
 | **실시간 통신** | WebSocket (FastAPI) | 에이전트 진행상황 스트리밍 |
 | **빌드/패키징** | electron-builder | 크로스 플랫폼 배포 |
@@ -400,7 +400,6 @@ code-agent/
 │   │   │   ├── worktree.py      # [v2.0] Git worktree 관리
 │   │   │   └── git.py           # [v2.0] Git 작업 (commit, diff)
 │   │   └── websocket/           # WebSocket 핸들러
-│   ├── alembic/                 # DB 마이그레이션
 │   ├── requirements.txt
 │   └── pyproject.toml
 │
@@ -434,7 +433,7 @@ npm install tailwindcss @tailwindcss/vite
 
 # Backend
 cd backend
-pip install fastapi uvicorn sqlalchemy alembic pymysql
+pip install fastapi uvicorn sqlalchemy pymysql
 pip install claude-agent-sdk websockets python-multipart
 pip install gitpython                               # [v2.0] Git 조작용
 
@@ -446,7 +445,6 @@ npm install -D concurrently wait-on
 #### 0-3. MySQL 연결 및 마이그레이션
 
 - SQLAlchemy 모델 정의 (위 스키마 기반)
-- Alembic 초기 마이그레이션 생성
 - 연결 테스트 스크립트 작성
 
 #### 0-4. [v2.0] Git Worktree 관리 서비스
@@ -644,9 +642,9 @@ class GitService:
 │     test_auth.py │  └──────────────────────────────────────┘ │
 │  ☐ requirements │                                          │
 │     .txt         │  커밋 메시지:                              │
-│  ☐ alembic/     │  ┌──────────────────────────────────────┐ │
-│     versions/    │  │ feat: 사용자 인증 API 구현             │ │
-│     0001_init.py │  └──────────────────────────────────────┘ │
+│                  │  ┌──────────────────────────────────────┐ │
+│                  │  │ feat: 사용자 인증 API 구현             │ │
+│                  │  └──────────────────────────────────────┘ │
 │                  │                                          │
 ├──────────────────┤  [Stage Selected] [Stage All]            │
 │  커밋 이력 (최근) │  [Commit]                                 │
@@ -1026,7 +1024,7 @@ DEFAULT_PROFILES = {
             "pytest", "python -m pytest",
             "ruff check", "ruff format",
             "mypy", "black",
-            "alembic", "uvicorn",
+            "uvicorn",
             "python -c",
         ],
         "blocked_commands": [
@@ -1035,7 +1033,7 @@ DEFAULT_PROFILES = {
             "pip install --user",  # 시스템 패키지 변경 방지
         ],
         "allowed_path_patterns": [
-            "app/**", "tests/**", "alembic/**",
+            "app/**", "tests/**",
             "requirements.txt", "pyproject.toml",
         ],
         "blocked_path_patterns": [
