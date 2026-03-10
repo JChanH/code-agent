@@ -1,0 +1,27 @@
+appId: com.code-agent.app
+productName: Code Agent
+directories:
+  buildResources: build
+  output: dist
+files:
+  - frontend/dist/**/*
+  - electron/**/*
+  - "!**/*.ts"
+extraResources:
+  - from: backend/dist/
+    to: backend/
+    filter:
+      - "**/*"
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - dmg
+    - zip
+win:
+  target:
+    - nsis
+    - portable
+linux:
+  target:
+    - AppImage
+    - deb

@@ -1,0 +1,173 @@
+"""Git worktree management and git operations service."""
+
+import subprocess
+import os
+from pathlib import Path
+from typing import Optional
+
+
+class WorktreeManager:
+    """Manages per-user git worktrees."""
+
+    def __init__(self, repo_path: str):
+        self.repo_path = Path(repo_path)
+
+    def create_worktree(self, user_id: str, branch_name: str) -> str:
+        """Create a worktree for a user. Returns the worktree path."""
+        worktree_path = self.repo_path / "worktrees" / user_id
+
+        if worktree_path.exists():
+            return str(worktree_path)
+
+        worktree_path.parent.mkdir(parents=True, exist_ok=True)
+
+        subprocess.run(
+            ["git", "worktree", "add", str(worktree_path), "-b", branch_name],
+            cwd=str(self.repo_path),
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return str(worktree_path)
+
+    def get_worktree_path(self, user_id: str) -> Optional[str]:
+        """Return the worktree path for a user, or None if it doesn't exist."""
+        worktree_path = self.repo_path / "worktrees" / user_id
+        return str(worktree_path) if worktree_path.exists() else None
+
+    def remove_worktree(self, user_id: str) -> None:
+        """Remove a user's worktree."""
+        worktree_path = self.repo_path / "worktrees" / user_id
+        if worktree_path.exists():
+            subprocess.run(
+                ["git", "worktree", "remove", str(worktree_path), "--force"],
+                cwd=str(self.repo_path),
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+    def list_worktrees(self) -> list[dict]:
+        """List all worktrees in the repository."""
+        result = subprocess.run(
+            ["git", "worktree", "list", "--porcelain"],
+            cwd=str(self.repo_path),
+            capture_output=True,
+            text=True,
+        )
+        worktrees = []
+        current: dict = {}
+        for line in result.stdout.strip().split("\n"):
+            if line.startswith("worktree "):
+                if current:
+                    worktrees.append(current)
+                current = {"path": line.split(" ", 1)[1]}
+            elif line.startswith("HEAD "):
+                current["head"] = line.split(" ", 1)[1]
+            elif line.startswith("branch "):
+                current["branch"] = line.split(" ", 1)[1]
+        if current:
+            worktrees.append(current)
+        return worktrees
+
+
+class GitService:
+    """Git operations for the Git Management tab.
+    All operations are performed within a user's worktree."""
+
+    def __init__(self, worktree_path: str):
+        self.worktree_path = worktree_path
+        if not os.path.isdir(worktree_path):
+            raise ValueError(f"Worktree path does not exist: {worktree_path}")
+
+    def _run(self, args: list[str], check: bool = True) -> subprocess.CompletedProcess:
+        """Run a git command in the worktree directory."""
+        return subprocess.run(
+            ["git"] + args,
+            cwd=self.worktree_path,
+            capture_output=True,
+            text=True,
+            check=check,
+        )
+
+    def get_status(self) -> list[dict]:
+        """Return list of changed files (git status --porcelain)."""
+        result = self._run(["status", "--porcelain"])
+        files = []
+        for line in result.stdout.strip().split("\n"):
+            if line.strip():
+                status_code = line[:2].strip()
+                file_path = line[3:]
+                files.append({"status": status_code, "path": file_path})
+        return files
+
+    def get_diff(self, file_path: str, staged: bool = False) -> str:
+        """Return the diff for a specific file."""
+        args = ["diff"]
+        if staged:
+            args.append("--staged")
+        args.append("--")
+        args.append(file_path)
+        result = self._run(args, check=False)
+        return result.stdout
+
+    def stage_files(self, file_paths: list[str]) -> None:
+        """Stage selected files."""
+        self._run(["add"] + file_paths)
+
+    def stage_all(self) -> None:
+        """Stage all changed files."""
+        self._run(["add", "."])
+
+    def unstage_files(self, file_paths: list[str]) -> None:
+        """Unstage selected files."""
+        self._run(["reset", "HEAD", "--"] + file_paths)
+
+    def commit(self, message: str) -> str:
+        """Commit staged changes. Returns the commit hash."""
+        self._run(["commit", "-m", message])
+        result = self._run(["rev-parse", "HEAD"])
+        return result.stdout.strip()
+
+    def pull(self, remote: str = "origin", branch: str = "main",
+             strategy: str = "rebase") -> str:
+        """Pull changes from remote. Returns output."""
+        args = ["pull", remote, branch]
+        if strategy == "rebase":
+            args.append("--rebase")
+        result = self._run(args, check=False)
+        return result.stdout + result.stderr
+
+    def push(self) -> str:
+        """Push current branch to origin. Returns output."""
+        result = self._run(["push", "-u", "origin", "HEAD"], check=False)
+        return result.stdout + result.stderr
+
+    def get_log(self, count: int = 20) -> list[dict]:
+        """Return recent commit log entries."""
+        result = self._run([
+            "log", f"--max-count={count}",
+            "--format=%H|%h|%s|%an|%ar",
+        ])
+        logs = []
+        for line in result.stdout.strip().split("\n"):
+            if line:
+                parts = line.split("|", 4)
+                if len(parts) == 5:
+                    logs.append({
+                        "hash": parts[0],
+                        "short_hash": parts[1],
+                        "message": parts[2],
+                        "author": parts[3],
+                        "relative_date": parts[4],
+                    })
+        return logs
+
+    def revert_file(self, file_path: str) -> None:
+        """Discard changes to a specific file."""
+        self._run(["checkout", "--", file_path])
+
+    def get_current_branch(self) -> str:
+        """Return the current branch name."""
+        result = self._run(["branch", "--show-current"])
+        return result.stdout.strip()
