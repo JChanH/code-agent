@@ -11,7 +11,7 @@ from app.schemas import (
     WorktreeCreate,
     WorktreeResponse,
 )
-from app.services.git import WorktreeManager
+from app.utils.git import WorktreeManager
 
 users_router = APIRouter(prefix="/users", tags=["users"])
 worktrees_router = APIRouter(prefix="/worktrees", tags=["worktrees"])

@@ -12,7 +12,7 @@ from app.schemas import (
     GitPullRequest,
     GitStageRequest,
 )
-from app.services.git import GitService
+from app.utils.git import GitService
 
 git_router = APIRouter(prefix="/projects/{project_id}/git", tags=["git"])
 
