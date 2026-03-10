@@ -612,7 +612,7 @@ class GitService:
 │          │   ┌─────────────────────────────────────┐ │
 │ > Proj A │   │                                     │ │
 │   Proj B │   │         Kanban Board Area           │ │
-│   Proj C │   │     (설계/개발 탭 선택 시 표시)       │ │
+│   Proj C │   │     (설계/개발 탭 선택 시 표시)        │ │
 │          │   │                                     │ │
 │ [+ 새    │   │         Git Management Area         │ │
 │  프로젝트]│   │       (Git 관리 탭 선택 시 표시)      │ │
