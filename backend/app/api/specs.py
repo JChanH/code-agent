@@ -6,7 +6,7 @@ import uuid
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.utils.db_handler_sqlalchemy import db_conn
 from app.models import Spec
 from app.schemas import SpecResponse
 from app.schemas.enums import SpecSourceType
@@ -24,7 +24,7 @@ specs_router = APIRouter(prefix="/specs", tags=["specs"])
 
 
 @project_specs_router.get("", response_model=list[SpecResponse])
-def list_specs(project_id: str, db: Session = Depends(get_db)):
+def list_specs(project_id: str, db: Session = Depends(db_conn.get_db)):
     return (
         db.query(Spec)
         .filter(Spec.project_id == project_id)
@@ -39,7 +39,7 @@ async def upload_spec(
     source_type: SpecSourceType = Form(SpecSourceType.document),
     file: UploadFile = File(None),
     raw_content: str = Form(None),
-    db: Session = Depends(get_db),
+    db: Session = Depends(db_conn.get_db),
 ):
     source_path = None
 
@@ -65,7 +65,7 @@ async def upload_spec(
 
 
 @specs_router.delete("/{spec_id}", status_code=204)
-def delete_spec(spec_id: str, db: Session = Depends(get_db)):
+def delete_spec(spec_id: str, db: Session = Depends(db_conn.get_db)):
     spec = db.query(Spec).filter(Spec.id == spec_id).first()
     if not spec:
         raise HTTPException(status_code=404, detail="Spec not found")

@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.utils.db_handler_sqlalchemy import db_conn
 from app.models import UserWorktree
 from app.schemas import (
     GitCommitRequest,
@@ -39,7 +39,7 @@ def _get_git_service(project_id: str, user_id: str, db: Session) -> GitService:
 def git_status(
     project_id: str,
     user_id: str = Query(...),
-    db: Session = Depends(get_db),
+    db: Session = Depends(db_conn.get_db),
 ):
     svc = _get_git_service(project_id, user_id, db)
     return svc.get_status()
@@ -51,7 +51,7 @@ def git_diff(
     file_path: str = Query(...),
     user_id: str = Query(...),
     staged: bool = Query(False),
-    db: Session = Depends(get_db),
+    db: Session = Depends(db_conn.get_db),
 ):
     svc = _get_git_service(project_id, user_id, db)
     return {"diff": svc.get_diff(file_path, staged=staged)}
@@ -62,7 +62,7 @@ def git_stage(
     project_id: str,
     body: GitStageRequest,
     user_id: str = Query(...),
-    db: Session = Depends(get_db),
+    db: Session = Depends(db_conn.get_db),
 ):
     svc = _get_git_service(project_id, user_id, db)
     svc.stage_files(body.file_paths)
@@ -74,7 +74,7 @@ def git_commit(
     project_id: str,
     body: GitCommitRequest,
     user_id: str = Query(...),
-    db: Session = Depends(get_db),
+    db: Session = Depends(db_conn.get_db),
 ):
     svc = _get_git_service(project_id, user_id, db)
     commit_hash = svc.commit(body.message)
@@ -86,7 +86,7 @@ def git_pull(
     project_id: str,
     body: GitPullRequest = GitPullRequest(),
     user_id: str = Query(...),
-    db: Session = Depends(get_db),
+    db: Session = Depends(db_conn.get_db),
 ):
     svc = _get_git_service(project_id, user_id, db)
     output = svc.pull(strategy=body.strategy)
@@ -97,7 +97,7 @@ def git_pull(
 def git_push(
     project_id: str,
     user_id: str = Query(...),
-    db: Session = Depends(get_db),
+    db: Session = Depends(db_conn.get_db),
 ):
     svc = _get_git_service(project_id, user_id, db)
     output = svc.push()
@@ -109,7 +109,7 @@ def git_log(
     project_id: str,
     user_id: str = Query(...),
     count: int = Query(20, le=100),
-    db: Session = Depends(get_db),
+    db: Session = Depends(db_conn.get_db),
 ):
     svc = _get_git_service(project_id, user_id, db)
     return svc.get_log(count=count)
@@ -120,7 +120,7 @@ def git_revert_file(
     project_id: str,
     file_path: str = Query(...),
     user_id: str = Query(...),
-    db: Session = Depends(get_db),
+    db: Session = Depends(db_conn.get_db),
 ):
     svc = _get_git_service(project_id, user_id, db)
     svc.revert_file(file_path)
@@ -131,7 +131,7 @@ def git_revert_file(
 def git_current_branch(
     project_id: str,
     user_id: str = Query(...),
-    db: Session = Depends(get_db),
+    db: Session = Depends(db_conn.get_db),
 ):
     svc = _get_git_service(project_id, user_id, db)
     return {"branch": svc.get_current_branch()}

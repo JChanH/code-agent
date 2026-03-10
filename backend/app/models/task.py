@@ -9,7 +9,7 @@ from sqlalchemy import Boolean, Enum, ForeignKey, Integer, JSON, String, Text, T
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from app.database import Base
+from .base import Base
 from app.models.common import generate_uuid
 
 

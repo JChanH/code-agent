@@ -21,11 +21,6 @@ cd code-agent
 npm run install:all
 ```
 
-### 2. Database Setup
-
-```sql
-CREATE DATABASE code_agent CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
 
 ### 3. Configure Environment
 
