@@ -445,7 +445,6 @@ npm install -D concurrently wait-on
 #### 0-3. MySQL 연결 및 마이그레이션
 
 - SQLAlchemy 모델 정의 (위 스키마 기반)
-- 연결 테스트 스크립트 작성
 
 #### 0-4. [v2.0] Git Worktree 관리 서비스
 

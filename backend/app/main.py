@@ -24,7 +24,7 @@ settings = get_settings()
 async def lifespan(app: FastAPI):
     """Create database tables on startup."""
     Base.metadata.create_all(bind=engine)
-    print(f"[Code Agent] Backend started — DB connected to {settings.db_host}:{settings.db_port}/{settings.db_name}")
+    print(f"[Code Agent] Backend started - DB connected to {settings.db_host}:{settings.db_port}/{settings.db_name}")
     yield
     print("[Code Agent] Backend shutting down")
 
