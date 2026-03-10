@@ -7,12 +7,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.database import engine, Base
 from app.api import (
+    agent_router,
+    git_router,
     projects_router,
+    specs_router,
+    tasks_router,
     users_router,
     worktrees_router,
-    tasks_router,
-    specs_router,
-    git_router,
 )
 from app.websocket import ws_manager
 
@@ -61,6 +62,7 @@ app.include_router(worktrees_router, prefix="/api")
 app.include_router(tasks_router, prefix="/api")
 app.include_router(specs_router, prefix="/api")
 app.include_router(git_router, prefix="/api")
+app.include_router(agent_router, prefix="/api")
 
 
 # ── WebSocket endpoint ───────────────────────
@@ -76,13 +78,3 @@ async def websocket_endpoint(websocket: WebSocket, project_id: str):
     except WebSocketDisconnect:
         ws_manager.disconnect(websocket, project_id)
 
-
-# ── Agent execution endpoint (placeholder) ───
-@app.post("/api/agent/run/{task_id}")
-async def run_agent(task_id: str):
-    """Placeholder — will be implemented in Phase 3."""
-    return {
-        "status": "queued",
-        "task_id": task_id,
-        "message": "Agent execution will be implemented in Phase 3",
-    }
