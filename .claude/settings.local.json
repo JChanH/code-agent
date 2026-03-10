@@ -5,7 +5,12 @@
       "Bash(mkdir -p $BASE/frontend/src/components/kanban $BASE/frontend/src/components/diff-viewer $BASE/frontend/src/components/common $BASE/frontend/src/pages/DesignPhase $BASE/frontend/src/pages/DevPhase $BASE/frontend/src/pages/Settings $BASE/frontend/src/hooks)",
       "Bash(touch $BASE/frontend/src/components/kanban/.gitkeep $BASE/frontend/src/components/diff-viewer/.gitkeep $BASE/frontend/src/components/common/.gitkeep $BASE/frontend/src/pages/DesignPhase/.gitkeep $BASE/frontend/src/pages/DevPhase/.gitkeep $BASE/frontend/src/pages/Settings/.gitkeep $BASE/frontend/src/hooks/.gitkeep)",
       "Bash(npm audit:*)",
-      "Bash(python -m uvicorn --version)"
+      "Bash(python -m uvicorn --version)",
+      "Bash(ls node_modules/.bin/electron*)",
+      "Bash(node_modules/.bin/electron --version)",
+      "Bash(c:/workspace/auto_code_demo/agent_practice/code-agent/node_modules/electron/dist/electron.exe --version)",
+      "Bash(c:/workspace/auto_code_demo/agent_practice/code-agent/backend/venv/Scripts/python -m uvicorn --version)",
+      "Bash(xargs wc:*)"
     ]
   }
 }

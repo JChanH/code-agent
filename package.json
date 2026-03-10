@@ -6,15 +6,17 @@
   "scripts": {
     "dev": "concurrently -n FE,BE,EL -c blue,green,yellow \"npm run dev:frontend\" \"npm run dev:backend\" \"npm run dev:electron\"",
     "dev:frontend": "cd frontend && npx vite --port 5173",
-    "dev:backend": "cd backend && venv/Scripts/python -m uvicorn app.main:app --reload --port 8000",
-    "dev:electron": "npx wait-on http://localhost:5173 http://localhost:8000 && npx electron electron/main.js",
+    "dev:backend": "cd backend && venv\\Scripts\\python -m uvicorn app.main:app --reload --port 8000",
+    "dev:electron": "npx wait-on http://localhost:5173 http-get://localhost:8000/health && npx electron electron/main.js",
+    
     "build:frontend": "cd frontend && npx vite build",
-    "build:backend": "cd backend && venv/Scripts/pyinstaller --onefile --name code-agent-backend app/main.py",
+    "build:backend": "cd backend && venv\\Scripts\\pyinstaller --onefile --name code-agent-backend app/main.py",
     "build": "npm run build:frontend && npm run build:backend && npx electron-builder",
-    "install:all": "npm install && cd frontend && npm install && cd ../backend && venv/Scripts/pip install -r requirements.txt",
+    
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && venv\\Scripts\\pip install -r requirements.txt",
     "lint:frontend": "cd frontend && npx eslint src/",
-    "lint:backend": "cd backend && venv/Scripts/ruff check app/",
-    "test:backend": "cd backend && venv/Scripts/python -m pytest tests/"
+    "lint:backend": "cd backend && venv\\Scripts\\ruff check app/",
+    "test:backend": "cd backend && venv\\Scripts\\python -m pytest tests/"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",

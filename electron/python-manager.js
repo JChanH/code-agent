@@ -16,6 +16,7 @@ class PythonManager {
       return;
     }
 
+    // 배포 후에는 사용자가 앱을 열면 Electron이 FastAPI 서버를 백그라운드 프로세스로 띄우게 된다
     const command = path.join(process.resourcesPath, 'backend', 'code-agent-backend');
     const args = ['--port', '8000'];
     const cwd = path.join(process.resourcesPath, 'backend');
