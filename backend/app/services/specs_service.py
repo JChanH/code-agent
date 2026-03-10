@@ -1,4 +1,4 @@
-"""Spec 서비스 레이어 — DB 조작 및 비즈니스 로직."""
+"""Spec 서비스 레이어 — 비즈니스 로직."""
 
 import os
 import uuid
@@ -8,17 +8,13 @@ from sqlalchemy.orm import Session
 
 from app.models import Spec
 from app.schemas.enums import SpecSourceType
+from app.repositories import spec_repository
 
 UPLOAD_DIR = "uploads"
 
 
 def list_specs(project_id: str, db: Session) -> list[Spec]:
-    return (
-        db.query(Spec)
-        .filter(Spec.project_id == project_id)
-        .order_by(Spec.created_at.desc())
-        .all()
-    )
+    return spec_repository.find_by_project(project_id, db)
 
 
 async def upload_spec(
@@ -45,15 +41,15 @@ async def upload_spec(
         source_path=source_path,
         raw_content=raw_content,
     )
-    db.add(spec)
+    spec_repository.add(spec, db)
     db.commit()
     db.refresh(spec)
     return spec
 
 
 def delete_spec(spec_id: str, db: Session) -> None:
-    spec = db.query(Spec).filter(Spec.id == spec_id).first()
+    spec = spec_repository.find_by_id(spec_id, db)
     if not spec:
         raise HTTPException(status_code=404, detail="Spec not found")
-    db.delete(spec)
+    spec_repository.delete(spec, db)
     db.commit()

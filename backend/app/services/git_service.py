@@ -3,21 +3,13 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.models import UserWorktree
 from app.utils.git import GitService
+from app.repositories import worktree_repository
 
 
 def get_git_service(project_id: str, user_id: str, db: Session) -> GitService:
     """사용자의 활성 worktree를 조회하고 GitService 인스턴스를 반환한다."""
-    worktree = (
-        db.query(UserWorktree)
-        .filter(
-            UserWorktree.project_id == project_id,
-            UserWorktree.user_id == user_id,
-            UserWorktree.status == "active",
-        )
-        .first()
-    )
+    worktree = worktree_repository.find_active_by_user_and_project(user_id, project_id, db)
     if not worktree:
         raise HTTPException(
             status_code=404,

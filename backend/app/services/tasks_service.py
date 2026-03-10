@@ -1,23 +1,19 @@
-"""Task 서비스 레이어 — DB 조작 및 비즈니스 로직."""
+"""Task 서비스 레이어 — 비즈니스 로직."""
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models import Task
 from app.schemas import TaskCreate, TaskUpdate
+from app.repositories import task_repository
 
 
 def list_tasks(project_id: str, db: Session) -> list[Task]:
-    return (
-        db.query(Task)
-        .filter(Task.project_id == project_id)
-        .order_by(Task.sort_order, Task.created_at)
-        .all()
-    )
+    return task_repository.find_by_project(project_id, db)
 
 
 def get_task(task_id: str, db: Session) -> Task:
-    task = db.query(Task).filter(Task.id == task_id).first()
+    task = task_repository.find_by_id(task_id, db)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     return task
@@ -27,7 +23,7 @@ def create_task(project_id: str, body: TaskCreate, db: Session) -> Task:
     data = body.model_dump()
     data["project_id"] = project_id
     task = Task(**data)
-    db.add(task)
+    task_repository.add(task, db)
     db.commit()
     db.refresh(task)
     return task
@@ -44,5 +40,5 @@ def update_task(task_id: str, body: TaskUpdate, db: Session) -> Task:
 
 def delete_task(task_id: str, db: Session) -> None:
     task = get_task(task_id, db)
-    db.delete(task)
+    task_repository.delete(task, db)
     db.commit()
