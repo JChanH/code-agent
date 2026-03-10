@@ -11,13 +11,14 @@ class PythonManager {
   async start() {
     const isDev = !app.isPackaged;
 
-    const command = isDev ? 'python' : path.join(process.resourcesPath, 'backend', 'code-agent-backend');
-    const args = isDev
-      ? ['-m', 'uvicorn', 'app.main:app', '--host', '0.0.0.0', '--port', '8000']
-      : ['--port', '8000'];
-    const cwd = isDev
-      ? path.join(__dirname, '..', 'backend')
-      : path.join(process.resourcesPath, 'backend');
+    // In dev mode, backend is already managed by concurrently (npm run dev)
+    if (isDev) {
+      return;
+    }
+
+    const command = path.join(process.resourcesPath, 'backend', 'code-agent-backend');
+    const args = ['--port', '8000'];
+    const cwd = path.join(process.resourcesPath, 'backend');
 
     this.process = spawn(command, args, {
       cwd,
@@ -37,7 +38,6 @@ class PythonManager {
       console.log(`[Backend] Process exited with code ${code}`);
     });
 
-    // Wait for backend to be ready
     await this._waitForReady(30000);
   }
 
