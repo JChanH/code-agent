@@ -1,5 +1,6 @@
 """Pydantic schemas for API request/response validation."""
 
+from app.schemas.common import ApiResponse, ErrorDetail
 from app.schemas.enums import (
     ProjectStack,
     ProjectStatus,
@@ -24,6 +25,8 @@ from app.schemas.user import UserCreate, UserResponse
 from app.schemas.worktree import WorktreeCreate, WorktreeResponse
 
 __all__ = [
+    "ApiResponse",
+    "ErrorDetail",
     "ProjectStack",
     "ProjectStatus",
     "TaskStatus",
