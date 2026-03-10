@@ -1,10 +1,9 @@
 """Git management API router."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.utils.db_handler_sqlalchemy import db_conn
-from app.models import UserWorktree
 from app.schemas import (
     GitCommitRequest,
     GitFileStatus,
@@ -12,27 +11,9 @@ from app.schemas import (
     GitPullRequest,
     GitStageRequest,
 )
-from app.utils.git import GitService
+from app.services import git_service
 
 git_router = APIRouter(prefix="/projects/{project_id}/git", tags=["git"])
-
-
-def _get_git_service(project_id: str, user_id: str, db: Session) -> GitService:
-    worktree = (
-        db.query(UserWorktree)
-        .filter(
-            UserWorktree.project_id == project_id,
-            UserWorktree.user_id == user_id,
-            UserWorktree.status == "active",
-        )
-        .first()
-    )
-    if not worktree:
-        raise HTTPException(
-            status_code=404,
-            detail="No active worktree found for this user/project",
-        )
-    return GitService(worktree.worktree_path)
 
 
 @git_router.get("/status", response_model=list[GitFileStatus])
@@ -41,8 +22,7 @@ def git_status(
     user_id: str = Query(...),
     db: Session = Depends(db_conn.get_db),
 ):
-    svc = _get_git_service(project_id, user_id, db)
-    return svc.get_status()
+    return git_service.get_status(project_id, user_id, db)
 
 
 @git_router.get("/diff")
@@ -53,8 +33,7 @@ def git_diff(
     staged: bool = Query(False),
     db: Session = Depends(db_conn.get_db),
 ):
-    svc = _get_git_service(project_id, user_id, db)
-    return {"diff": svc.get_diff(file_path, staged=staged)}
+    return git_service.get_diff(project_id, user_id, file_path, staged, db)
 
 
 @git_router.post("/stage")
@@ -64,9 +43,7 @@ def git_stage(
     user_id: str = Query(...),
     db: Session = Depends(db_conn.get_db),
 ):
-    svc = _get_git_service(project_id, user_id, db)
-    svc.stage_files(body.file_paths)
-    return {"message": "Files staged", "files": body.file_paths}
+    return git_service.stage_files(project_id, user_id, body.file_paths, db)
 
 
 @git_router.post("/commit")
@@ -76,9 +53,7 @@ def git_commit(
     user_id: str = Query(...),
     db: Session = Depends(db_conn.get_db),
 ):
-    svc = _get_git_service(project_id, user_id, db)
-    commit_hash = svc.commit(body.message)
-    return {"message": "Committed", "hash": commit_hash}
+    return git_service.commit(project_id, user_id, body.message, db)
 
 
 @git_router.post("/pull")
@@ -88,9 +63,7 @@ def git_pull(
     user_id: str = Query(...),
     db: Session = Depends(db_conn.get_db),
 ):
-    svc = _get_git_service(project_id, user_id, db)
-    output = svc.pull(strategy=body.strategy)
-    return {"message": "Pull completed", "output": output}
+    return git_service.pull(project_id, user_id, body.strategy, db)
 
 
 @git_router.post("/push")
@@ -99,9 +72,7 @@ def git_push(
     user_id: str = Query(...),
     db: Session = Depends(db_conn.get_db),
 ):
-    svc = _get_git_service(project_id, user_id, db)
-    output = svc.push()
-    return {"message": "Push completed", "output": output}
+    return git_service.push(project_id, user_id, db)
 
 
 @git_router.get("/log", response_model=list[GitLogEntry])
@@ -111,8 +82,7 @@ def git_log(
     count: int = Query(20, le=100),
     db: Session = Depends(db_conn.get_db),
 ):
-    svc = _get_git_service(project_id, user_id, db)
-    return svc.get_log(count=count)
+    return git_service.get_log(project_id, user_id, count, db)
 
 
 @git_router.post("/revert")
@@ -122,9 +92,7 @@ def git_revert_file(
     user_id: str = Query(...),
     db: Session = Depends(db_conn.get_db),
 ):
-    svc = _get_git_service(project_id, user_id, db)
-    svc.revert_file(file_path)
-    return {"message": f"Reverted: {file_path}"}
+    return git_service.revert_file(project_id, user_id, file_path, db)
 
 
 @git_router.get("/branch")
@@ -133,5 +101,4 @@ def git_current_branch(
     user_id: str = Query(...),
     db: Session = Depends(db_conn.get_db),
 ):
-    svc = _get_git_service(project_id, user_id, db)
-    return {"branch": svc.get_current_branch()}
+    return git_service.get_current_branch(project_id, user_id, db)

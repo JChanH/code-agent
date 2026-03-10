@@ -1,67 +1,35 @@
 """Project API router."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.utils.db_handler_sqlalchemy import db_conn
-from app.agents.security.profiles import DEFAULT_PROFILES
-from app.models import Project, SecurityProfile
 from app.schemas import ProjectCreate, ProjectResponse, ProjectUpdate
+from app.services import projects_service
 
 projects_router = APIRouter(prefix="/projects", tags=["projects"])
 
 
 @projects_router.get("", response_model=list[ProjectResponse])
 def list_projects(db: Session = Depends(db_conn.get_db)):
-    return db.query(Project).order_by(Project.created_at.desc()).all()
+    return projects_service.list_projects(db)
 
 
 @projects_router.post("", response_model=ProjectResponse, status_code=201)
 def create_project(body: ProjectCreate, db: Session = Depends(db_conn.get_db)):
-    project = Project(**body.model_dump())
-    db.add(project)
-    db.flush()
-
-    stack = body.project_stack or "python"
-    profile_data = DEFAULT_PROFILES.get(stack, DEFAULT_PROFILES["python"])
-    security_profile = SecurityProfile(
-        project_id=project.id,
-        stack_type=stack,
-        allowed_commands=profile_data["allowed_commands"],
-        blocked_commands=profile_data["blocked_commands"],
-        allowed_paths=profile_data.get("allowed_path_patterns"),
-        blocked_paths=profile_data.get("blocked_path_patterns"),
-    )
-    db.add(security_profile)
-    db.commit()
-    db.refresh(project)
-    return project
+    return projects_service.create_project(body, db)
 
 
 @projects_router.get("/{project_id}", response_model=ProjectResponse)
 def get_project(project_id: str, db: Session = Depends(db_conn.get_db)):
-    project = db.query(Project).filter(Project.id == project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    return project
+    return projects_service.get_project(project_id, db)
 
 
 @projects_router.patch("/{project_id}", response_model=ProjectResponse)
 def update_project(project_id: str, body: ProjectUpdate, db: Session = Depends(db_conn.get_db)):
-    project = db.query(Project).filter(Project.id == project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    for key, value in body.model_dump(exclude_unset=True).items():
-        setattr(project, key, value)
-    db.commit()
-    db.refresh(project)
-    return project
+    return projects_service.update_project(project_id, body, db)
 
 
 @projects_router.delete("/{project_id}", status_code=204)
 def delete_project(project_id: str, db: Session = Depends(db_conn.get_db)):
-    project = db.query(Project).filter(Project.id == project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    db.delete(project)
-    db.commit()
+    projects_service.delete_project(project_id, db)
