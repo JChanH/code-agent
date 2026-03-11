@@ -12,7 +12,9 @@
       "Bash(c:/workspace/auto_code_demo/agent_practice/code-agent/backend/venv/Scripts/python -m uvicorn --version)",
       "Bash(xargs wc:*)",
       "Bash(npm install:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(grep -n \"p-$\\\\|addProject\\\\|template\" \"c:/workspace/auto_code_demo/agent_practice/code-agent/frontend/src/components/common/Sidebar.tsx\")",
+      "Bash(npm run:*)"
     ]
   }
 }

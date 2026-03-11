@@ -1,4 +1,5 @@
-import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
 import KanbanColumn from './KanbanColumn';
 import type { Task, TaskStatus, User } from '../../types';
 
