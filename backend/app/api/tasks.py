@@ -1,9 +1,7 @@
 """Task API router."""
 
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from fastapi import APIRouter
 
-from app.utils.db_handler_sqlalchemy import db_conn
 from app.schemas import TaskCreate, TaskResponse, TaskUpdate
 from app.schemas.common import ApiResponse
 from app.services import tasks_service
@@ -19,26 +17,26 @@ tasks_router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
 @project_tasks_router.get("", response_model=ApiResponse[list[TaskResponse]])
-def list_tasks(project_id: str, db: Session = Depends(db_conn.get_db)):
-    return ApiResponse.ok(tasks_service.list_tasks(project_id, db))
+async def list_tasks(project_id: str):
+    return ApiResponse.ok(await tasks_service.list_tasks(project_id))
 
 
 @project_tasks_router.post("", response_model=ApiResponse[TaskResponse], status_code=201)
-def create_task(project_id: str, body: TaskCreate, db: Session = Depends(db_conn.get_db)):
-    return ApiResponse.ok(tasks_service.create_task(project_id, body, db))
+async def create_task(project_id: str, body: TaskCreate):
+    return ApiResponse.ok(await tasks_service.create_task(project_id, body))
 
 
 @tasks_router.get("/{task_id}", response_model=ApiResponse[TaskResponse])
-def get_task(task_id: str, db: Session = Depends(db_conn.get_db)):
-    return ApiResponse.ok(tasks_service.get_task(task_id, db))
+async def get_task(task_id: str):
+    return ApiResponse.ok(await tasks_service.get_task(task_id))
 
 
 @tasks_router.patch("/{task_id}", response_model=ApiResponse[TaskResponse])
-def update_task(task_id: str, body: TaskUpdate, db: Session = Depends(db_conn.get_db)):
-    return ApiResponse.ok(tasks_service.update_task(task_id, body, db))
+async def update_task(task_id: str, body: TaskUpdate):
+    return ApiResponse.ok(await tasks_service.update_task(task_id, body))
 
 
 @tasks_router.delete("/{task_id}", response_model=ApiResponse[None])
-def delete_task(task_id: str, db: Session = Depends(db_conn.get_db)):
-    tasks_service.delete_task(task_id, db)
+async def delete_task(task_id: str):
+    await tasks_service.delete_task(task_id)
     return ApiResponse.ok(None)

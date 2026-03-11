@@ -1,21 +1,37 @@
 """User repository — DB 쿼리 전담."""
 
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import User
+from app.utils.db_handler_sqlalchemy import db_conn
 
 
-def find_all(db: Session) -> list[User]:
-    return db.query(User).order_by(User.username).all()
+async def find_all(session: AsyncSession | None = None) -> list[User]:
+    async with db_conn.transaction(session) as s:
+        result = await s.execute(select(User).order_by(User.username))
+        return result.scalars().all()
 
 
-def find_by_id(user_id: str, db: Session) -> User | None:
-    return db.query(User).filter(User.id == user_id).first()
+async def find_by_id(user_id: str, session: AsyncSession | None = None) -> User | None:
+    async with db_conn.transaction(session) as s:
+        result = await s.execute(select(User).where(User.id == user_id))
+        return result.scalars().first()
 
 
-def find_by_username(username: str, db: Session) -> User | None:
-    return db.query(User).filter(User.username == username).first()
+async def find_by_username(username: str, session: AsyncSession | None = None) -> User | None:
+    async with db_conn.transaction(session) as s:
+        result = await s.execute(select(User).where(User.username == username))
+        return result.scalars().first()
 
 
-def add(user: User, db: Session) -> None:
-    db.add(user)
+async def add(user: User, session: AsyncSession | None = None) -> User:
+    async with db_conn.transaction(session) as s:
+        s.add(user)
+        await s.flush()
+        await s.refresh(user)
+        return user
+
+
+def delete(user: User, session: AsyncSession) -> None:
+    session.delete(user)

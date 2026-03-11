@@ -1,44 +1,46 @@
 """Task 서비스 레이어 — 비즈니스 로직."""
 
-from sqlalchemy.orm import Session
-
 from app.exceptions.business import NotFoundException
 from app.models import Task
 from app.schemas import TaskCreate, TaskUpdate
 from app.repositories import task_repository
+from app.utils.db_handler_sqlalchemy import db_conn
 
 
-def list_tasks(project_id: str, db: Session) -> list[Task]:
-    return task_repository.find_by_project(project_id, db)
+async def list_tasks(project_id: str) -> list[Task]:
+    return await task_repository.find_by_project(project_id)
 
 
-def get_task(task_id: str, db: Session) -> Task:
-    task = task_repository.find_by_id(task_id, db)
+async def get_task(task_id: str) -> Task:
+    task = await task_repository.find_by_id(task_id)
     if not task:
         raise NotFoundException("Task not found")
     return task
 
 
-def create_task(project_id: str, body: TaskCreate, db: Session) -> Task:
-    data = body.model_dump()
-    data["project_id"] = project_id
-    task = Task(**data)
-    task_repository.add(task, db)
-    db.commit()
-    db.refresh(task)
-    return task
+async def create_task(project_id: str, body: TaskCreate) -> Task:
+    async with db_conn.transaction() as session:
+        data = body.model_dump()
+        data["project_id"] = project_id
+        task = Task(**data)
+        return await task_repository.add(task, session)
 
 
-def update_task(task_id: str, body: TaskUpdate, db: Session) -> Task:
-    task = get_task(task_id, db)
-    for key, value in body.model_dump(exclude_unset=True).items():
-        setattr(task, key, value)
-    db.commit()
-    db.refresh(task)
-    return task
+async def update_task(task_id: str, body: TaskUpdate) -> Task:
+    async with db_conn.transaction() as session:
+        task = await task_repository.find_by_id(task_id, session)
+        if not task:
+            raise NotFoundException("Task not found")
+        for key, value in body.model_dump(exclude_unset=True).items():
+            setattr(task, key, value)
+        await session.flush()
+        await session.refresh(task)
+        return task
 
 
-def delete_task(task_id: str, db: Session) -> None:
-    task = get_task(task_id, db)
-    task_repository.delete(task, db)
-    db.commit()
+async def delete_task(task_id: str) -> None:
+    async with db_conn.transaction() as session:
+        task = await task_repository.find_by_id(task_id, session)
+        if not task:
+            raise NotFoundException("Task not found")
+        task_repository.delete(task, session)

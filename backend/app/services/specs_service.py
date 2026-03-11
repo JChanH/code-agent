@@ -4,24 +4,23 @@ import os
 import uuid
 
 from fastapi import UploadFile
-from sqlalchemy.orm import Session
 
 from app.exceptions.business import NotFoundException
 from app.models import Spec
 from app.schemas.enums import SpecSourceType
 from app.repositories import spec_repository
+from app.utils.db_handler_sqlalchemy import db_conn
 
 UPLOAD_DIR = "uploads"
 
 
-def list_specs(project_id: str, db: Session) -> list[Spec]:
-    return spec_repository.find_by_project(project_id, db)
+async def list_specs(project_id: str) -> list[Spec]:
+    return await spec_repository.find_by_project(project_id)
 
 
 async def upload_spec(
     project_id: str,
     source_type: SpecSourceType,
-    db: Session,
     file: UploadFile | None = None,
     raw_content: str | None = None,
 ) -> Spec:
@@ -36,21 +35,19 @@ async def upload_spec(
             f.write(await file.read())
         source_path = dest
 
-    spec = Spec(
-        project_id=project_id,
-        source_type=source_type,
-        source_path=source_path,
-        raw_content=raw_content,
-    )
-    spec_repository.add(spec, db)
-    db.commit()
-    db.refresh(spec)
-    return spec
+    async with db_conn.transaction() as session:
+        spec = Spec(
+            project_id=project_id,
+            source_type=source_type,
+            source_path=source_path,
+            raw_content=raw_content,
+        )
+        return await spec_repository.add(spec, session)
 
 
-def delete_spec(spec_id: str, db: Session) -> None:
-    spec = spec_repository.find_by_id(spec_id, db)
-    if not spec:
-        raise NotFoundException("Spec not found")
-    spec_repository.delete(spec, db)
-    db.commit()
+async def delete_spec(spec_id: str) -> None:
+    async with db_conn.transaction() as session:
+        spec = await spec_repository.find_by_id(spec_id, session)
+        if not spec:
+            raise NotFoundException("Spec not found")
+        spec_repository.delete(spec, session)

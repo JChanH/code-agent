@@ -1,26 +1,35 @@
 """Spec repository — DB 쿼리 전담."""
 
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Spec
+from app.utils.db_handler_sqlalchemy import db_conn
 
 
-def find_by_project(project_id: str, db: Session) -> list[Spec]:
-    return (
-        db.query(Spec)
-        .filter(Spec.project_id == project_id)
-        .order_by(Spec.created_at.desc())
-        .all()
-    )
+async def find_by_project(project_id: str, session: AsyncSession | None = None) -> list[Spec]:
+    async with db_conn.transaction(session) as s:
+        result = await s.execute(
+            select(Spec)
+            .where(Spec.project_id == project_id)
+            .order_by(Spec.created_at.desc())
+        )
+        return result.scalars().all()
 
 
-def find_by_id(spec_id: str, db: Session) -> Spec | None:
-    return db.query(Spec).filter(Spec.id == spec_id).first()
+async def find_by_id(spec_id: str, session: AsyncSession | None = None) -> Spec | None:
+    async with db_conn.transaction(session) as s:
+        result = await s.execute(select(Spec).where(Spec.id == spec_id))
+        return result.scalars().first()
 
 
-def add(spec: Spec, db: Session) -> None:
-    db.add(spec)
+async def add(spec: Spec, session: AsyncSession | None = None) -> Spec:
+    async with db_conn.transaction(session) as s:
+        s.add(spec)
+        await s.flush()
+        await s.refresh(spec)
+        return spec
 
 
-def delete(spec: Spec, db: Session) -> None:
-    db.delete(spec)
+def delete(spec: Spec, session: AsyncSession) -> None:
+    session.delete(spec)
