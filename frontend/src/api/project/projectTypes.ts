@@ -1,5 +1,6 @@
 // ── Project ───────────────────────────────────────────────────────────────────
 
+export type ProjectType = 'new' | 'existing';
 export type ProjectStack = 'python' | 'java' | 'other';
 export type ProjectStatus = 'setup' | 'designing' | 'developing' | 'completed';
 
@@ -7,7 +8,9 @@ export interface Project {
   id: string;
   name: string;
   description: string | null;
-  repo_url: string | null;
+  project_type: ProjectType;
+  repo_url: string;
+  local_repo_path: string | null;
   main_branch: string;
   project_stack: ProjectStack;
   framework: string | null;
@@ -17,9 +20,11 @@ export interface Project {
 }
 
 export interface ProjectCreate {
+  project_type: ProjectType;
   name: string;
   description?: string;
-  repo_url?: string;
+  repo_url: string;
+  local_repo_path?: string;
   main_branch?: string;
   project_stack?: ProjectStack;
   framework?: string;

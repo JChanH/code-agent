@@ -23,7 +23,7 @@ class PythonManager {
 
     this.process = spawn(command, args, {
       cwd,
-      env: { ...process.env },
+      env: { ...process.env, APP_DATA_DIR: app.getPath('userData') },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 

@@ -19,7 +19,13 @@ class Project(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text)
-    repo_url: Mapped[Optional[str]] = mapped_column(String(500))
+    project_type: Mapped[str] = mapped_column(
+        Enum("new", "existing", name="project_type_enum"),
+        nullable=False,
+        default="existing",
+    )
+    repo_url: Mapped[str] = mapped_column(String(500), nullable=False)
+    local_repo_path: Mapped[Optional[str]] = mapped_column(String(1000))
     main_branch: Mapped[str] = mapped_column(String(100), default="main")
     project_stack: Mapped[str] = mapped_column(
         Enum("python", "java", "other", name="project_stack_enum"),

@@ -31,5 +31,5 @@ async def add(spec: Spec, session: AsyncSession | None = None) -> Spec:
         return spec
 
 
-def delete(spec: Spec, session: AsyncSession) -> None:
-    session.delete(spec)
+async def delete(spec: Spec, session: AsyncSession) -> None:
+    await session.delete(spec)

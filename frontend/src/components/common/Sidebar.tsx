@@ -1,7 +1,8 @@
-﻿import { useState } from "react";
-import { FolderOpen, GitBranch, Layers, Settings, Plus, Code2, Terminal } from "lucide-react";
+import { useState } from "react";
+import { FolderOpen, GitBranch, Layers, Settings, Plus, Code2, Terminal, X } from "lucide-react";
 import { useAppStore } from "../../stores";
 import { createProject } from "../../api/project/projectApis";
+import type { ProjectCreate, ProjectType } from "../../api/project/projectTypes";
 import type { ActiveTab } from "../../types";
 
 const TABS: { id: ActiveTab; label: string; icon: React.ReactNode }[] = [
@@ -12,21 +13,135 @@ const TABS: { id: ActiveTab; label: string; icon: React.ReactNode }[] = [
   { id: "settings", label: "프로젝트 설정", icon: <Settings size={14} /> },
 ];
 
-export default function Sidebar() {
-  const { projects, selectedProjectId, activeTab, selectProject, setActiveTab, addProject } = useAppStore();
-  const [showNewProject, setShowNewProject] = useState(false);
-  const [newProjectName, setNewProjectName] = useState("");
+const EMPTY_FORM: ProjectCreate = {
+  project_type: "existing",
+  name: "",
+  repo_url: "",
+  local_repo_path: "",
+  description: "",
+  main_branch: "main",
+  project_stack: "python",
+  framework: "fastapi",
+};
 
-  async function handleCreateProject() {
-    if (!newProjectName.trim()) return;
-    const result = await createProject({ name: newProjectName.trim() });
+function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
+  const { addProject } = useAppStore();
+  const [form, setForm] = useState<ProjectCreate>(EMPTY_FORM);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  function set(field: keyof ProjectCreate, value: string) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function switchType(type: ProjectType) {
+    setForm((prev) => ({ ...prev, project_type: type, local_repo_path: "" }));
+    setError(null);
+  }
+
+  async function handleSubmit(e: { preventDefault: () => void }) {
+    e.preventDefault();
+    if (form.project_type === "existing" && !form.local_repo_path?.trim()) {
+      setError("기존 프로젝트는 로컬 경로가 필요합니다.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    const result = await createProject(form);
+    setLoading(false);
     if (result.success && result.data) {
       addProject(result.data);
-      selectProject(result.data.id);
+      onCreated(result.data.id);
+      onClose();
+    } else {
+      setError("프로젝트 생성에 실패했습니다.");
     }
-    setNewProjectName("");
-    setShowNewProject(false);
   }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <span>새 프로젝트</span>
+          <button onClick={onClose}><X size={16} /></button>
+        </div>
+
+        {/* 프로젝트 타입 선택 */}
+        <div className="modal-type-toggle">
+          <button
+            className={`modal-type-btn ${form.project_type === "existing" ? "active" : ""}`}
+            onClick={() => switchType("existing")}
+            type="button"
+          >
+            기존 프로젝트
+          </button>
+          <button
+            className={`modal-type-btn ${form.project_type === "new" ? "active" : ""}`}
+            onClick={() => switchType("new")}
+            type="button"
+          >
+            신규 프로젝트
+          </button>
+        </div>
+
+        <form className="modal-form" onSubmit={handleSubmit}>
+          <label>
+            프로젝트 이름 <span className="required">*</span>
+            <input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="My Project" required />
+          </label>
+
+          <label>
+            Git 저장소 URL <span className="required">*</span>
+            <input value={form.repo_url} onChange={(e) => set("repo_url", e.target.value)} placeholder="https://github.com/user/repo" required />
+          </label>
+
+          {form.project_type === "existing" ? (
+            <label>
+              로컬 경로 <span className="required">*</span>
+              <input
+                value={form.local_repo_path ?? ""}
+                onChange={(e) => set("local_repo_path", e.target.value)}
+                placeholder="C:/Users/dev/projects/my-project"
+                required
+              />
+              <span className="field-hint">에이전트가 코드베이스를 읽는 경로</span>
+            </label>
+          ) : (
+            <label>
+              초기화 경로 <span className="optional">(선택)</span>
+              <input
+                value={form.local_repo_path ?? ""}
+                onChange={(e) => set("local_repo_path", e.target.value)}
+                placeholder="C:/Users/dev/projects/new-project"
+              />
+              <span className="field-hint">프로젝트를 생성할 로컬 폴더</span>
+            </label>
+          )}
+
+          <label>
+            메인 브랜치
+            <input value={form.main_branch ?? "main"} onChange={(e) => set("main_branch", e.target.value)} placeholder="main" />
+          </label>
+
+          <label>
+            설명 <span className="optional">(선택)</span>
+            <input value={form.description ?? ""} onChange={(e) => set("description", e.target.value)} placeholder="프로젝트 설명" />
+          </label>
+
+          {error && <p className="modal-error">{error}</p>}
+
+          <button className="modal-submit" type="submit" disabled={loading}>
+            {loading ? "생성 중..." : "프로젝트 생성"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+export default function Sidebar() {
+  const { projects, selectedProjectId, activeTab, selectProject, setActiveTab } = useAppStore();
+  const [showModal, setShowModal] = useState(false);
 
   function handleTabClick(tabId: ActiveTab) {
     if (!selectedProjectId && projects.length > 0) selectProject(projects[0].id);
@@ -38,15 +153,8 @@ export default function Sidebar() {
       <div className="sidebar-section">
         <div className="sidebar-section-title">
           <span>프로젝트</span>
-          <button onClick={() => setShowNewProject((v) => !v)} title="새 프로젝트"><Plus size={13} /></button>
+          <button onClick={() => setShowModal(true)} title="새 프로젝트"><Plus size={13} /></button>
         </div>
-        {showNewProject && (
-          <div className="sidebar-new-form">
-            <input autoFocus value={newProjectName} onChange={(e) => setNewProjectName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleCreateProject(); if (e.key === "Escape") setShowNewProject(false); }}
-              placeholder="프로젝트 이름" />
-          </div>
-        )}
         <ul className="sidebar-list">
           {projects.map((p) => (
             <li key={p.id} className={"sidebar-item " + (p.id === selectedProjectId ? "active" : "")} onClick={() => selectProject(p.id)}>
@@ -67,6 +175,13 @@ export default function Sidebar() {
           ))}
         </ul>
       </div>
+
+      {showModal && (
+        <NewProjectModal
+          onClose={() => setShowModal(false)}
+          onCreated={(id) => selectProject(id)}
+        />
+      )}
     </aside>
   );
 }

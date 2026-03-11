@@ -3,6 +3,11 @@
 from enum import Enum
 
 
+class ProjectType(str, Enum):
+    new = "new"
+    existing = "existing"
+
+
 class ProjectStack(str, Enum):
     python = "python"
     java = "java"

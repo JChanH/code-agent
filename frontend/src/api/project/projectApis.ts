@@ -101,11 +101,13 @@ export async function getSpecs(projectId: string): Promise<Spec[]> {
 }
 
 /** Spec 파일 업로드 (문서/이미지/텍스트) */
-export async function uploadSpec(projectId: string, formData: FormData): Promise<Spec> {
-  const response = await client.post<Spec>(`/api/projects/${projectId}/specs`, formData, {
+export async function uploadSpec(
+  projectId: string, formData: FormData
+): Promise<Spec> {
+  const response = await client.post<ApiResponse<Spec>>(`/api/projects/${projectId}/specs`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
-  return response.data;
+  return response.data.data!;
 }
 
 /** Spec 삭제 */

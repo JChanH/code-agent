@@ -5,7 +5,9 @@ CREATE TABLE projects (
     id              VARCHAR(36) PRIMARY KEY,        -- UUID
     name            VARCHAR(255) NOT NULL,
     description     TEXT,
-    repo_url        VARCHAR(500),                   -- Git 저장소 URL
+    project_type    ENUM('new', 'existing') NOT NULL DEFAULT 'existing',  -- 신규/기존 프로젝트 구분
+    repo_url        VARCHAR(500) NOT NULL,           -- Git 저장소 URL
+    local_repo_path VARCHAR(1000),                  -- 로컬 코드베이스 경로
     main_branch     VARCHAR(100) DEFAULT 'main',    -- 메인 브랜치명
     project_stack   ENUM('python', 'java', 'other') DEFAULT 'python',
     framework       VARCHAR(100),                   -- 'fastapi', 'spring', 등
