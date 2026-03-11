@@ -24,8 +24,8 @@ class Project(Base):
         nullable=False,
         default="existing",
     )
-    repo_url: Mapped[str] = mapped_column(String(500), nullable=False)
-    local_repo_path: Mapped[Optional[str]] = mapped_column(String(1000))
+    repo_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    local_repo_path: Mapped[str] = mapped_column(String(1000), nullable=False)
     main_branch: Mapped[str] = mapped_column(String(100), default="main")
     project_stack: Mapped[str] = mapped_column(
         Enum("python", "java", "other", name="project_stack_enum"),

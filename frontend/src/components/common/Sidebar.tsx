@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FolderOpen, GitBranch, Layers, Settings, Plus, Code2, Terminal, X } from "lucide-react";
+import { FolderOpen, GitBranch, Layers, Settings, Plus, Code2, Terminal, X, FolderSearch } from "lucide-react";
 import { useAppStore } from "../../stores";
 import { createProject } from "../../api/project/projectApis";
 import type { ProjectCreate, ProjectType } from "../../api/project/projectTypes";
@@ -24,6 +24,11 @@ const EMPTY_FORM: ProjectCreate = {
   framework: "fastapi",
 };
 
+const LOCAL_REPO_HINT: Record<string, string> = {
+  existing: "에이전트가 코드베이스를 읽는 경로",
+  new: "프로젝트를 생성할 로컬 폴더",
+};
+
 function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
   const { addProject } = useAppStore();
   const [form, setForm] = useState<ProjectCreate>(EMPTY_FORM);
@@ -39,10 +44,15 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
     setError(null);
   }
 
+  async function handlePickDirectory() {
+    const path = await window.electronAPI?.openDirectory();
+    if (path) set("local_repo_path", path);
+  }
+
   async function handleSubmit(e: { preventDefault: () => void }) {
     e.preventDefault();
-    if (form.project_type === "existing" && !form.local_repo_path?.trim()) {
-      setError("기존 프로젝트는 로컬 경로가 필요합니다.");
+    if (!form.local_repo_path?.trim()) {
+      setError("로컬 경로는 필수입니다.");
       return;
     }
     setLoading(true);
@@ -91,32 +101,26 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
           </label>
 
           <label>
-            Git 저장소 URL <span className="required">*</span>
-            <input value={form.repo_url} onChange={(e) => set("repo_url", e.target.value)} placeholder="https://github.com/user/repo" required />
-          </label>
-
-          {form.project_type === "existing" ? (
-            <label>
-              로컬 경로 <span className="required">*</span>
+            로컬 경로 <span className="required">*</span>
+            <div className="input-with-btn">
               <input
                 value={form.local_repo_path ?? ""}
                 onChange={(e) => set("local_repo_path", e.target.value)}
                 placeholder="C:/Users/dev/projects/my-project"
                 required
               />
-              <span className="field-hint">에이전트가 코드베이스를 읽는 경로</span>
-            </label>
-          ) : (
-            <label>
-              초기화 경로 <span className="optional">(선택)</span>
-              <input
-                value={form.local_repo_path ?? ""}
-                onChange={(e) => set("local_repo_path", e.target.value)}
-                placeholder="C:/Users/dev/projects/new-project"
-              />
-              <span className="field-hint">프로젝트를 생성할 로컬 폴더</span>
-            </label>
-          )}
+              <button type="button" className="input-browse-btn" onClick={handlePickDirectory} title="폴더 선택">
+                <FolderSearch size={15} />
+              </button>
+            </div>
+            <span className="field-hint">{LOCAL_REPO_HINT[form.project_type]}</span>
+          </label>
+
+          <label>
+            Git 저장소 URL <span className="optional">(선택)</span>
+            <input value={form.repo_url ?? ""} onChange={(e) => set("repo_url", e.target.value)} placeholder="https://github.com/user/repo" />
+            <span className="field-hint">나중에 Git 관리 화면에서 설정 가능</span>
+          </label>
 
           <label>
             메인 브랜치

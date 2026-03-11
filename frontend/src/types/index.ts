@@ -1,3 +1,16 @@
+// ── Electron API ─────────────────────────────────────────────────────────────
+
+declare global {
+  interface Window {
+    electronAPI?: {
+      openDirectory: () => Promise<string | null>;
+      openFile: (filters?: { name: string; extensions: string[] }[]) => Promise<string | null>;
+      getBackendUrl: () => Promise<string>;
+      getWsUrl: () => Promise<string>;
+    };
+  }
+}
+
 // ── Enums ────────────────────────────────────────────────────────────────────
 
 export type ProjectStack = 'python' | 'java' | 'other';

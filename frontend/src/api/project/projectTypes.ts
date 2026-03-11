@@ -9,8 +9,8 @@ export interface Project {
   name: string;
   description: string | null;
   project_type: ProjectType;
-  repo_url: string;
-  local_repo_path: string | null;
+  repo_url: string | null;
+  local_repo_path: string;
   main_branch: string;
   project_stack: ProjectStack;
   framework: string | null;
@@ -23,8 +23,8 @@ export interface ProjectCreate {
   project_type: ProjectType;
   name: string;
   description?: string;
-  repo_url: string;
-  local_repo_path?: string;
+  repo_url?: string;
+  local_repo_path: string;
   main_branch?: string;
   project_stack?: ProjectStack;
   framework?: string;

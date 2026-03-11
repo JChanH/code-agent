@@ -86,36 +86,35 @@ def _build_prompt(spec_content: str, project: Project) -> str:
 
     if project.local_repo_path:
         codebase_section = f"""
-## 코드베이스 탐색 (필수)
-로컬 경로: `{project.local_repo_path}`
-Task 설계 전에 반드시 아래 절차를 따르세요:
-1. Glob 툴로 전체 파일 구조 파악 (예: `{project.local_repo_path}/**/*.py`)
-2. 핵심 파일(모델, 라우터, 서비스 등) Read로 확인
-3. 기존 패턴/네이밍 규칙을 Task 설계에 반영
-4. 이미 구현된 기능은 Task에서 제외하거나 수정 Task로만 포함
-"""
-    else:
-        codebase_section = "\n## 참고\n로컬 코드베이스 경로가 설정되지 않아 스펙 내용만으로 Task를 설계합니다.\n"
-
+            ## 코드베이스 탐색 (필수)
+            로컬 경로: `{project.local_repo_path}`
+            Task 설계 전에 반드시 아래 절차를 따르세요:
+            1. Glob 툴로 전체 파일 구조 파악 (예: `{project.local_repo_path}/**/*.py`)
+            2. 핵심 파일(모델, 라우터, 서비스 등) Read로 확인
+            3. 기존 패턴/네이밍 규칙을 Task 설계에 반영
+            4. 이미 구현된 기능은 Task에서 제외하거나 수정 Task로만 포함
+        """
+    
     return f"""당신은 소프트웨어 설계 전문가입니다.
-아래 스펙 문서를 분석하여 개발 Task 목록으로 분해해주세요.
+        아래 스펙 문서를 분석하여 개발 Task 목록으로 분해해주세요.
 
-## 프로젝트 컨텍스트
-- 이름: {project.name}
-- 스택: {project.project_stack} / {project.framework or "미지정"}
-- 저장소: {project.repo_url}
-{stack_context}
-{codebase_section}
-## Spec 내용
-{spec_content}
+        ## 프로젝트 컨텍스트
+        - 이름: {project.name}
+        - 스택: {project.project_stack} / {project.framework or "미지정"}
+        - 저장소: {project.repo_url or "미설정"}
+        {stack_context}
+        {codebase_section}
+        ## Spec 내용
+        {spec_content}
 
-## 규칙
-1. 각 Task는 1-4시간 내 완료 가능한 단위로 분해
-2. Task 간 의존성을 명확히 기술
-3. acceptance_criteria는 검증 가능한 구체적 조건으로 작성
-4. 기존 코드베이스 구조를 먼저 파악한 후 Task 설계
-5. 프레임워크 규칙({project.framework or "해당없음"})을 따를 것
-6. 결과는 반드시 JSON 형식으로만 반환"""
+        ## 규칙
+        1. 각 Task는 1-4시간 내 완료 가능한 단위로 분해
+        2. Task 간 의존성을 명확히 기술
+        3. acceptance_criteria는 검증 가능한 구체적 조건으로 작성
+        4. 기존 코드베이스 구조를 먼저 파악한 후 Task 설계
+        5. 프레임워크 규칙({project.framework or "해당없음"})을 따를 것
+        6. 결과는 반드시 JSON 형식으로만 반환
+    """
 
 
 async def _load_spec_content(spec: Spec) -> str:
