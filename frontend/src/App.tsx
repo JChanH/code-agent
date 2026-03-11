@@ -1,8 +1,9 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
 import { Bell, Settings, Code2 } from 'lucide-react';
 import Sidebar from './components/common/Sidebar';
-import { useAppStore, useTaskStore } from './stores';
-import { MOCK_PROJECTS, MOCK_USERS, MOCK_TASKS, MOCK_LOGS } from './mock/data';
+import { useAppStore, CURRENT_USER_ID } from './stores';
+import { MOCK_LOGS } from './mock/data';
+import { getProjects } from './api/project/projectApis';
 import './App.css';
 
 const DesignPhase = lazy(() => import('./pages/DesignPhase'));
@@ -14,10 +15,7 @@ const SettingsPage = lazy(() => import('./pages/Settings'));
 // ── Header ────────────────────────────────────────────────────────────────────
 
 function AppHeader() {
-  const { users, selectedUserId } = useAppStore();
-  const user = users.find((u) => u.id === selectedUserId) ?? users[0];
-  const name = user?.display_name ?? user?.username ?? 'User';
-  const initial = (name[0] ?? 'U').toUpperCase();
+  const initial = (CURRENT_USER_ID[0] ?? 'U').toUpperCase();
 
   return (
     <header className="app-header">
@@ -27,7 +25,7 @@ function AppHeader() {
       </div>
       <div className="header-spacer" />
       <div className="header-user">
-        <span>사용자: {name}</span>
+        <span>사용자: {CURRENT_USER_ID}</span>
         <div className="header-avatar">{initial}</div>
       </div>
       <button className="header-icon-btn" title="알림">
@@ -111,6 +109,11 @@ function MainContent() {
 
   return (
     <Suspense fallback={<div className="loading">로딩 중...</div>}>
+      {activeTab === 'dashboard' && (
+        <div className="empty-state">
+          <p>DASHBOARD 개발 예정</p>
+        </div>
+      )}
       {activeTab === 'design' && <DesignPhase projectId={selectedProjectId} />}
       {activeTab === 'dev' && <DevPhase projectId={selectedProjectId} />}
       {activeTab === 'console' && <ConsolePage projectId={selectedProjectId} />}
@@ -123,16 +126,16 @@ function MainContent() {
 // ── App ───────────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const { setProjects, setUsers, selectProject, selectUser } = useAppStore();
-  const { setTasks } = useTaskStore();
+  const { setProjects, selectProject } = useAppStore();
 
+  // 프로젝트 조회
   useEffect(() => {
-    setProjects(MOCK_PROJECTS);
-    setUsers(MOCK_USERS);
-    setTasks(MOCK_TASKS);
-    selectProject(MOCK_PROJECTS[0].id);
-    selectUser(MOCK_USERS[0].id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    getProjects().then((result) => {
+      if (result.success && result.data) {
+        setProjects(result.data);
+        if (result.data.length > 0) selectProject(result.data[0].id);
+      }
+    });
   }, []);
 
   return (

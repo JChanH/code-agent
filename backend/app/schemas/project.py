@@ -9,12 +9,13 @@ from app.schemas.enums import ProjectStack, ProjectStatus
 
 
 class ProjectCreate(BaseModel):
+    # NOTE: project stack과 framework는 고정(MVP) 
     name: str
     description: Optional[str] = None
     repo_url: Optional[str] = None
     main_branch: str = "main"
     project_stack: ProjectStack = ProjectStack.python
-    framework: Optional[str] = None
+    framework: Optional[str] = "fastapi"
 
 
 class ProjectUpdate(BaseModel):

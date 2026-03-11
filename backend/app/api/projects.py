@@ -12,6 +12,15 @@ projects_router = APIRouter(prefix="/projects", tags=["projects"])
 @projects_router.get("")
 async def list_projects(
 ) -> ApiResponse[list[ProjectResponse]]:
+    """
+    모든 프로젝트 목록을 조회합니다.
+
+    Args:
+        없음
+
+    Returns:
+        ApiResponse[list[ProjectResponse]]: 프로젝트 목록을 담은 공통 응답 객체
+    """
     return ApiResponse.ok(await projects_service.list_projects())
 
 
@@ -19,6 +28,15 @@ async def list_projects(
 async def create_project(
     body: ProjectCreate
 ) -> ApiResponse[ProjectResponse]:
+    """
+    새로운 프로젝트를 생성합니다.
+
+    Args:
+        body (ProjectCreate): 생성할 프로젝트 정보 (이름, 설명 등)
+
+    Returns:
+        ApiResponse[ProjectResponse]: 생성된 프로젝트 정보를 담은 공통 응답 객체
+    """
     return ApiResponse.ok(await projects_service.create_project(body))
 
 
@@ -26,6 +44,15 @@ async def create_project(
 async def get_project(
     project_id: str
 ) -> ApiResponse[ProjectResponse]:
+    """
+    특정 프로젝트의 상세 정보를 조회합니다.
+
+    Args:
+        project_id (str): 조회할 프로젝트의 고유 ID
+
+    Returns:
+        ApiResponse[ProjectResponse]: 조회된 프로젝트 정보를 담은 공통 응답 객체
+    """
     return ApiResponse.ok(await projects_service.get_project(project_id))
 
 
@@ -34,6 +61,16 @@ async def update_project(
     project_id: str,
     body: ProjectUpdate
 ) -> ApiResponse[ProjectResponse]:
+    """
+    특정 프로젝트의 정보를 수정합니다.
+
+    Args:
+        project_id (str): 수정할 프로젝트의 고유 ID
+        body (ProjectUpdate): 수정할 프로젝트 정보 (이름, 설명 등)
+
+    Returns:
+        ApiResponse[ProjectResponse]: 수정된 프로젝트 정보를 담은 공통 응답 객체
+    """
     return ApiResponse.ok(await projects_service.update_project(project_id, body))
 
 
@@ -41,5 +78,14 @@ async def update_project(
 async def delete_project(
     project_id: str
 ) -> ApiResponse[None]:
+    """
+    특정 프로젝트를 삭제합니다.
+
+    Args:
+        project_id (str): 삭제할 프로젝트의 고유 ID
+
+    Returns:
+        ApiResponse[None]: 성공 여부를 담은 공통 응답 객체 (데이터 없음)
+    """
     await projects_service.delete_project(project_id)
     return ApiResponse.ok(None)

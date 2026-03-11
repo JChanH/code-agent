@@ -19,12 +19,13 @@ async def get_project(project_id: str) -> Project:
     return project
 
 
-async def create_project(body: ProjectCreate) -> Project:
+# 프로젝트 생성
+async def create_project(request: ProjectCreate) -> Project:
     async with db_conn.transaction() as session:
-        project = Project(**body.model_dump())
+        project = Project(**request.model_dump())
         await project_repository.add(project, session)
 
-        stack = body.project_stack or "python"
+        stack = request.project_stack or "python"
         profile_data = DEFAULT_PROFILES.get(stack, DEFAULT_PROFILES["python"])
         security_profile = SecurityProfile(
             project_id=project.id,

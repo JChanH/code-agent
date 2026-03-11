@@ -20,7 +20,7 @@ export type SpecStatus = 'uploaded' | 'analyzing' | 'analyzed' | 'confirmed';
 
 export type WorktreeStatus = 'active' | 'inactive' | 'archived';
 
-export type ActiveTab = 'design' | 'dev' | 'console' | 'git' | 'settings';
+export type ActiveTab = 'dashboard' | 'design' | 'dev' | 'console' | 'git' | 'settings';
 
 // ── Domain Models ─────────────────────────────────────────────────────────────
 
@@ -146,4 +146,26 @@ export interface WsTaskUpdate {
   status: TaskStatus;
   progress?: number;
   message?: string;
+}
+
+export interface WsSpecAnalyzing {
+  spec_id: string;
+}
+
+export interface WsSpecAnalyzed {
+  spec_id: string;
+  analysis_summary: string;
+  tasks: Array<{
+    id: string;
+    title: string;
+    description: string;
+    priority: TaskPriority;
+    complexity: TaskComplexity;
+    status: TaskStatus;
+  }>;
+}
+
+export interface WsSpecAnalyzeFailed {
+  spec_id: string;
+  error: string;
 }

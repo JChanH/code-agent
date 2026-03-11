@@ -1,4 +1,4 @@
-import client from '../client';
+import client, { type ApiResponse, extractErrorResponse } from '../client';
 import type {
   Project,
   ProjectCreate,
@@ -13,45 +13,66 @@ import type {
 // ── Projects ──────────────────────────────────────────────────────────────────
 
 /** 전체 프로젝트 목록 조회 */
-export async function getProjects(): Promise<Project[]> {
-  const response = await client.get<Project[]>('/api/projects');
-  return response.data;
+export async function getProjects(): Promise<ApiResponse<Project[]>> {
+  try {
+    const response = await client.get<ApiResponse<Project[]>>('/api/projects');
+    return response.data;
+  } catch (error) {
+    return extractErrorResponse<Project[]>(error);
+  }
 }
 
 /** 특정 프로젝트 단건 조회 */
-export async function getProject(id: string): Promise<Project> {
-  const response = await client.get<Project>(`/api/projects/${id}`);
-  return response.data;
+export async function getProject(id: string): Promise<ApiResponse<Project>> {
+  try {
+    const response = await client.get<ApiResponse<Project>>(`/api/projects/${id}`);
+    return response.data;
+  } catch (error) {
+    return extractErrorResponse<Project>(error);
+  }
 }
 
 /** 새 프로젝트 생성 */
-export async function createProject(body: ProjectCreate): Promise<Project> {
-  const response = await client.post<Project>('/api/projects', body);
-  return response.data;
+export async function createProject(body: ProjectCreate): Promise<ApiResponse<Project>> {
+  try {
+    const response = await client.post<ApiResponse<Project>>('/api/projects', body);
+    return response.data;
+  } catch (error) {
+    return extractErrorResponse<Project>(error);
+  }
 }
 
 /** 프로젝트 정보 수정 (이름, 상태, repo_url 등) */
 export async function updateProject(
   id: string,
   body: Partial<ProjectCreate & { status: string }>,
-): Promise<Project> {
-  const response = await client.patch<Project>(`/api/projects/${id}`, body);
-  return response.data;
+): Promise<ApiResponse<Project>> {
+  try {
+    const response = await client.patch<ApiResponse<Project>>(`/api/projects/${id}`, body);
+    return response.data;
+  } catch (error) {
+    return extractErrorResponse<Project>(error);
+  }
 }
 
 /** 프로젝트 삭제 */
-export async function removeProject(id: string): Promise<void> {
-  const response = await client.delete(`/api/projects/${id}`);
-  return response.data;
+export async function removeProject(id: string): Promise<ApiResponse<null>> {
+  try {
+    const response = await client.delete<ApiResponse<null>>(`/api/projects/${id}`);
+    return response.data;
+  } catch (error) {
+    return extractErrorResponse<null>(error);
+  }
 }
 
 // ── Tasks ─────────────────────────────────────────────────────────────────────
 
 /** 프로젝트의 전체 Task 목록 조회 */
 export async function getTasks(projectId: string): Promise<Task[]> {
-  const response = await client.get<Task[]>(`/api/projects/${projectId}/tasks`);
-  return response.data;
+  const response = await client.get<ApiResponse<Task[]>>(`/api/projects/${projectId}/tasks`);
+  return response.data.data ?? [];
 }
+
 
 /** 특정 Task 단건 조회 */
 export async function getTask(taskId: string): Promise<Task> {
@@ -75,8 +96,8 @@ export async function updateTask(taskId: string, body: TaskUpdate): Promise<Task
 
 /** 프로젝트의 전체 Spec 목록 조회 */
 export async function getSpecs(projectId: string): Promise<Spec[]> {
-  const response = await client.get<Spec[]>(`/api/projects/${projectId}/specs`);
-  return response.data;
+  const response = await client.get<ApiResponse<Spec[]>>(`/api/projects/${projectId}/specs`);
+  return response.data.data ?? [];
 }
 
 /** Spec 파일 업로드 (문서/이미지/텍스트) */
@@ -91,6 +112,16 @@ export async function uploadSpec(projectId: string, formData: FormData): Promise
 export async function removeSpec(specId: string): Promise<void> {
   const response = await client.delete(`/api/specs/${specId}`);
   return response.data;
+}
+
+/** Spec 분석 시작 (Design Agent 실행) */
+export async function analyzeSpec(specId: string): Promise<void> {
+  await client.post(`/api/agent/specs/${specId}/analyze`);
+}
+
+/** 분석된 Spec 확정 (개발 단계 Backlog으로 이동) */
+export async function confirmSpec(specId: string): Promise<void> {
+  await client.post(`/api/specs/${specId}/confirm`);
 }
 
 // ── Git ───────────────────────────────────────────────────────────────────────

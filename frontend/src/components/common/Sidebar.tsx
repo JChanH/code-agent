@@ -1,6 +1,7 @@
 ﻿import { useState } from "react";
 import { FolderOpen, GitBranch, Layers, Settings, Plus, Code2, Terminal } from "lucide-react";
 import { useAppStore } from "../../stores";
+import { createProject } from "../../api/project/projectApis";
 import type { ActiveTab } from "../../types";
 
 const TABS: { id: ActiveTab; label: string; icon: React.ReactNode }[] = [
@@ -16,10 +17,13 @@ export default function Sidebar() {
   const [showNewProject, setShowNewProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
 
-  function handleCreateProject() {
+  async function handleCreateProject() {
     if (!newProjectName.trim()) return;
-    const now = new Date().toISOString();
-    addProject({ id: 'p-' + Date.now(), name: newProjectName.trim(), description: null, repo_url: null, main_branch: "main", project_stack: "python", framework: null, status: "setup", created_at: now, updated_at: now });
+    const result = await createProject({ name: newProjectName.trim() });
+    if (result.success && result.data) {
+      addProject(result.data);
+      selectProject(result.data.id);
+    }
     setNewProjectName("");
     setShowNewProject(false);
   }
