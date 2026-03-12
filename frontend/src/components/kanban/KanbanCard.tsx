@@ -1,19 +1,12 @@
 ﻿import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import {
-  AlertCircle, CheckCircle2, Circle, Clock, Loader2, XCircle,
-  Play, Check, X, RotateCcw,
-} from "lucide-react";
+import { CheckCircle2, Clock, Play } from "lucide-react";
 import type { Task, TaskPriority, TaskStatus } from "../../types";
 
 const STATUS_ICON: Record<TaskStatus, React.ReactNode> = {
-  backlog: <Circle size={13} />,
   planning: <Clock size={13} style={{ color: "#6366f1" }} />,
-  plan_review: <Clock size={13} style={{ color: "#f59e0b" }} />,
-  coding: <Loader2 size={13} className="animate-spin" style={{ color: "#3b82f6" }} />,
-  reviewing: <AlertCircle size={13} style={{ color: "#f59e0b" }} />,
-  done: <CheckCircle2 size={13} style={{ color: "#22c55e" }} />,
-  failed: <XCircle size={13} style={{ color: "#ef4444" }} />,
+  plan_reviewing: <Clock size={13} style={{ color: "#f59e0b" }} />,
+  confirmed: <CheckCircle2 size={13} style={{ color: "#22c55e" }} />,
 };
 
 const PRIORITY_COLOR: Record<TaskPriority, string> = {
@@ -23,12 +16,7 @@ const PRIORITY_COLOR: Record<TaskPriority, string> = {
   critical: "#ef4444",
 };
 
-// 상태별 가상 진행률 (UI 데모용)
-const MOCK_PROGRESS: Partial<Record<TaskStatus, number>> = {
-  planning: 30,
-  coding: 67,
-  reviewing: 95,
-};
+const MOCK_PROGRESS: Partial<Record<TaskStatus, number>> = {};
 
 interface Props {
   task: Task;
@@ -92,29 +80,11 @@ export default function KanbanCard({ task, assigneeName, onClick }: Props) {
       </div>
 
       {/* 액션 버튼: 상태별 */}
-      {task.status === "backlog" && (
+      {task.status === "planning" && (
         <div className="card-actions">
           <button className="card-btn-run" onClick={(e) => e.stopPropagation()}>
             <Play size={10} /> 실행
           </button>
-        </div>
-      )}
-      {task.status === "reviewing" && (
-        <div className="card-actions">
-          <button className="card-btn-approve" onClick={(e) => e.stopPropagation()}>
-            <Check size={10} /> 승인
-          </button>
-          <button className="card-btn-reject" onClick={(e) => e.stopPropagation()}>
-            <X size={10} /> 거절
-          </button>
-          <button className="card-btn-run" onClick={(e) => e.stopPropagation()}>
-            <RotateCcw size={10} /> 자동승인
-          </button>
-        </div>
-      )}
-      {task.status === "done" && task.git_commit_hash && (
-        <div className="card-footer-commit" style={{ marginTop: 6, fontSize: 10, color: "#6b7280", fontFamily: "monospace" }}>
-          {task.git_commit_hash}
         </div>
       )}
     </div>

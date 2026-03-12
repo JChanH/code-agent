@@ -1,123 +1,142 @@
 import { useEffect, useRef, useState } from 'react';
-import { Upload, FileText, Image, Plus, X, CheckCircle, Loader, AlertCircle } from 'lucide-react';
-import KanbanBoard from '../../components/kanban/KanbanBoard';
+import {
+  DndContext, PointerSensor, useSensor, useSensors,
+  useDroppable,
+} from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import {
+  Upload, FileText, Image, Plus, X, Loader, AlertCircle, CheckCircle,
+} from 'lucide-react';
+import DesignTaskCard from '../../components/kanban/DesignTaskCard';
 import { useTaskStore } from '../../stores';
 import {
-  getSpecs,
-  getTasks,
-  uploadSpec,
-  removeSpec,
-  analyzeSpec,
-  confirmSpec,
-  updateTask,
+  getSpecs, getTasks, uploadSpec, removeSpec, analyzeSpec,
+  finalConfirmSpec, updateTask, deleteTask,
 } from '../../api/project/projectApis';
-import type { Spec, Task, TaskStatus } from '../../types';
+import type { Spec, Task, TaskPriority, TaskComplexity } from '../../types';
 
-const TASK_COLUMNS = [
-  { id: 'backlog' as TaskStatus, title: 'Task 분해됨' },
-  { id: 'planning' as TaskStatus, title: '계획 중' },
-  { id: 'plan_review' as TaskStatus, title: '검토 중' },
-  { id: 'coding' as TaskStatus, title: '확정됨' },
-];
+// ── 컬럼 ID ───────────────────────────────────────────────────────────────────
 
-const DESIGN_STATUSES: TaskStatus[] = ['backlog', 'planning', 'plan_review', 'coding'];
+const COL_REVIEWING = 'plan_reviewing';
+const COL_CONFIRMED = 'confirmed';
 
-interface Props {
-  projectId: string;
+// ── Task 편집 모달 ────────────────────────────────────────────────────────────
+
+interface EditModalProps {
+  task: Task;
+  onSave: (patch: Partial<Task>) => void;
+  onClose: () => void;
 }
 
-// ── Spec 상태 뱃지 ────────────────────────────────────────────────────────────
+function TaskEditModal({ task, onSave, onClose }: EditModalProps) {
+  const [title, setTitle] = useState(task.title);
+  const [description, setDescription] = useState(task.description);
+  const [criteria, setCriteria] = useState<string[]>(task.acceptance_criteria ?? []);
+  const [priority, setPriority] = useState<TaskPriority>(task.priority);
+  const [complexity, setComplexity] = useState<TaskComplexity>(task.complexity);
+  const [newCriterion, setNewCriterion] = useState('');
 
-function SpecStatusBadge({ status }: { status: Spec['status'] }) {
-  if (status === 'analyzing') {
-    return (
-      <span className="badge" style={{ background: '#854d0e', color: '#fef08a', display: 'flex', alignItems: 'center', gap: 4 }}>
-        <Loader size={10} />
-        분석 중
-      </span>
-    );
+  function addCriterion() {
+    if (newCriterion.trim()) {
+      setCriteria([...criteria, newCriterion.trim()]);
+      setNewCriterion('');
+    }
   }
-  if (status === 'analyzed') {
-    return <span className="badge" style={{ background: '#166534', color: '#bbf7d0' }}>분석 완료</span>;
-  }
-  if (status === 'confirmed') {
-    return <span className="badge" style={{ background: '#1e3a5f', color: '#bae6fd' }}>확정됨</span>;
-  }
-  return <span className="badge">업로드됨</span>;
-}
-
-// ── Spec 카드 ─────────────────────────────────────────────────────────────────
-
-function SpecCard({
-  spec,
-  onAnalyze,
-  onConfirm,
-  onDelete,
-  isAnalyzing,
-}: {
-  spec: Spec;
-  onAnalyze: (id: string) => void;
-  onConfirm: (id: string) => void;
-  onDelete: (id: string) => void;
-  isAnalyzing: boolean;
-}) {
-  const canAnalyze = spec.status === 'uploaded' || spec.status === 'analyzed';
-  const canConfirm = spec.status === 'analyzed';
-  const label =
-    spec.source_type === 'text'
-      ? (spec.raw_content?.slice(0, 50) || 'Spec 텍스트') +
-        (spec.raw_content && spec.raw_content.length > 50 ? '…' : '')
-      : spec.source_path?.split(/[/\\]/).pop() || 'Spec 파일';
 
   return (
     <div
-      style={{
-        background: 'var(--bg-secondary)',
-        border: '1px solid var(--border)',
-        borderRadius: 6,
-        padding: '10px 12px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
-      }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}
+      onClick={onClose}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 13, fontWeight: 500, flex: 1, wordBreak: 'break-all' }}>
-          {label}
-        </span>
-        <SpecStatusBadge status={spec.status} />
-        <button
-          className="btn-icon"
-          onClick={() => onDelete(spec.id)}
-          title="삭제"
-          disabled={isAnalyzing}
-          style={{ opacity: isAnalyzing ? 0.4 : 1 }}
-        >
-          <X size={12} />
-        </button>
-      </div>
-      <div style={{ display: 'flex', gap: 6 }}>
-        {canAnalyze && (
+      <div
+        style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, padding: 20, width: 520, maxHeight: '80vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontWeight: 600 }}>Task 수정</span>
+          <button className="btn-icon" onClick={onClose}><X size={14} /></button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label style={{ fontSize: 11, color: 'var(--text-muted)' }}>제목</label>
+          <input
+            style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 4, padding: '6px 8px', color: 'inherit', fontSize: 13 }}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label style={{ fontSize: 11, color: 'var(--text-muted)' }}>설명</label>
+          <textarea
+            style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 4, padding: '6px 8px', color: 'inherit', fontSize: 13, resize: 'vertical', minHeight: 100, fontFamily: 'inherit' }}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
+
+        <div style={{ display: 'flex', gap: 12 }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label style={{ fontSize: 11, color: 'var(--text-muted)' }}>우선순위</label>
+            <select
+              style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 4, padding: '6px 8px', color: 'inherit', fontSize: 13 }}
+              value={priority}
+              onChange={(e) => setPriority(e.target.value as TaskPriority)}
+            >
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="critical">Critical</option>
+            </select>
+          </div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label style={{ fontSize: 11, color: 'var(--text-muted)' }}>복잡도</label>
+            <select
+              style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 4, padding: '6px 8px', color: 'inherit', fontSize: 13 }}
+              value={complexity}
+              onChange={(e) => setComplexity(e.target.value as TaskComplexity)}
+            >
+              <option value="trivial">Trivial</option>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="very_high">Very High</option>
+            </select>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label style={{ fontSize: 11, color: 'var(--text-muted)' }}>수용 기준</label>
+          {criteria.map((c, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ flex: 1, fontSize: 12, color: 'var(--text-secondary)', background: 'var(--bg-primary)', padding: '4px 8px', borderRadius: 4 }}>{c}</span>
+              <button className="btn-icon" onClick={() => setCriteria(criteria.filter((_, idx) => idx !== i))}><X size={11} /></button>
+            </div>
+          ))}
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input
+              style={{ flex: 1, background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 4, padding: '5px 8px', color: 'inherit', fontSize: 12 }}
+              placeholder="기준 추가… (Enter)"
+              value={newCriterion}
+              onChange={(e) => setNewCriterion(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') addCriterion(); }}
+            />
+            <button className="btn-sm" onClick={addCriterion}><Plus size={11} /></button>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button className="btn-sm" onClick={onClose}>취소</button>
           <button
             className="btn-sm"
-            onClick={() => onAnalyze(spec.id)}
-            disabled={isAnalyzing}
-            style={{ opacity: isAnalyzing ? 0.5 : 1 }}
+            style={{ background: '#1d4ed8', color: '#fff' }}
+            onClick={() => onSave({ title, description, acceptance_criteria: criteria, priority, complexity })}
+            disabled={!title.trim()}
           >
-            {isAnalyzing ? <Loader size={10} /> : <FileText size={10} />}
-            {isAnalyzing ? '분석 중…' : '분석 시작'}
+            저장
           </button>
-        )}
-        {canConfirm && (
-          <button
-            className="btn-sm"
-            onClick={() => onConfirm(spec.id)}
-            style={{ background: '#166534', color: '#bbf7d0' }}
-          >
-            <CheckCircle size={10} />
-            확정
-          </button>
-        )}
+        </div>
       </div>
     </div>
   );
@@ -129,7 +148,7 @@ function TextInputModal({ onSubmit, onClose }: { onSubmit: (text: string) => voi
   const [text, setText] = useState('');
   return (
     <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}
       onClick={onClose}
     >
       <div
@@ -163,21 +182,58 @@ function TextInputModal({ onSubmit, onClose }: { onSubmit: (text: string) => voi
   );
 }
 
+// ── 드롭 가능한 컬럼 ──────────────────────────────────────────────────────────
+
+function DroppableColumn({
+  id, title, count, headerExtra, children,
+}: {
+  id: string;
+  title: string;
+  count: number;
+  headerExtra?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
+        background: isOver ? 'rgba(99,102,241,0.06)' : 'var(--bg-secondary)',
+        border: `1px solid ${isOver ? '#6366f1' : 'var(--border)'}`,
+        borderRadius: 8, padding: '12px 10px', gap: 8, minHeight: 300,
+        transition: 'border-color 0.15s, background 0.15s',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+        <span style={{ fontWeight: 600, fontSize: 13 }}>{title}</span>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-primary)', borderRadius: 10, padding: '1px 7px' }}>
+          {count}
+        </span>
+        {headerExtra}
+      </div>
+      {children}
+    </div>
+  );
+}
+
 // ── 메인 컴포넌트 ─────────────────────────────────────────────────────────────
 
-export default function DesignPhase({ projectId }: Props) {
+export default function DesignPhase({ projectId }: { projectId: string }) {
   const {
     tasks, specs, analyzingSpecIds,
     setTasks, setSpecs, addSpec,
     updateTask: storeUpdateTask,
     removeSpec: storeRemoveSpec,
-    updateSpec,
   } = useTaskStore();
 
   const [error, setError] = useState<string | null>(null);
   const [showTextModal, setShowTextModal] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   useEffect(() => {
     Promise.all([
@@ -190,9 +246,14 @@ export default function DesignPhase({ projectId }: Props) {
   }, [projectId]);
 
   const projectSpecs = specs.filter((sp) => sp.project_id === projectId);
-  const designTasks = tasks.filter((t) => t.project_id === projectId && DESIGN_STATUSES.includes(t.status));
+  const analyzingSpecs = projectSpecs.filter((sp) => sp.status === 'analyzing');
+  const uploadedSpecs = projectSpecs.filter((sp) => sp.status === 'uploaded');
 
-  // 파일 업로드 api연결
+  const reviewingTasks = tasks.filter((t) => t.project_id === projectId && t.status === 'plan_reviewing');
+  const confirmedTasks = tasks.filter((t) => t.project_id === projectId && t.status === 'confirmed');
+
+  // ── 파일 업로드 ─────────────────────────────────────────────────────────────
+
   async function handleFileUpload(file: File, sourceType: 'document' | 'image') {
     setError(null);
     const formData = new FormData();
@@ -229,48 +290,139 @@ export default function DesignPhase({ projectId }: Props) {
     }
   }
 
-  async function handleConfirm(specId: string) {
-    setError(null);
-    try {
-      await confirmSpec(specId);
-      updateSpec(specId, { status: 'confirmed' });
-    } catch {
-      setError('Spec 확정에 실패했습니다.');
-    }
-  }
-
-  async function handleDelete(specId: string) {
+  async function handleDeleteSpec(specId: string) {
     setError(null);
     try {
       await removeSpec(specId);
       storeRemoveSpec(specId);
     } catch {
-      setError('삭제에 실패했습니다.');
+      setError('Spec 삭제에 실패했습니다.');
     }
   }
 
-  async function handleTaskStatusChange(taskId: string, newStatus: TaskStatus) {
-    storeUpdateTask(taskId, { status: newStatus });
+  // ── Task 수정 ────────────────────────────────────────────────────────────────
+
+  async function handleSaveTask(patch: Partial<Task>) {
+    if (!editingTask) return;
+    storeUpdateTask(editingTask.id, patch);
+    setEditingTask(null);
     try {
-      await updateTask(taskId, { status: newStatus });
+      const { assigned_user_id, ...rest } = patch;
+      await updateTask(editingTask.id, {
+        ...rest,
+        ...(assigned_user_id !== null ? { assigned_user_id } : {}),
+      });
     } catch {
-      // 낙관적 업데이트 유지
+      setError('Task 수정에 실패했습니다.');
     }
   }
 
-  function handleDrop(e: React.DragEvent) {
+  // ── Task 삭제 ────────────────────────────────────────────────────────────────
+
+  async function handleDeleteTask(taskId: string) {
+    setError(null);
+    try {
+      await deleteTask(taskId);
+      const loadedTasks = await getTasks(projectId).catch(() => [] as Task[]);
+      setTasks(loadedTasks as Task[]);
+    } catch {
+      setError('Task 삭제에 실패했습니다.');
+    }
+  }
+
+  // ── Drag & Drop ──────────────────────────────────────────────────────────────
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const taskId = active.id as string;
+    const overId = over.id as string;
+
+    let newStatus: 'plan_reviewing' | 'confirmed' | null = null;
+
+    if (overId === COL_REVIEWING) {
+      newStatus = 'plan_reviewing';
+    } else if (overId === COL_CONFIRMED) {
+      newStatus = 'confirmed';
+    } else {
+      const targetTask = tasks.find((t) => t.id === overId);
+      if (targetTask?.status === 'plan_reviewing' || targetTask?.status === 'confirmed') {
+        newStatus = targetTask.status;
+      }
+    }
+
+    if (newStatus) {
+      storeUpdateTask(taskId, { status: newStatus });
+      updateTask(taskId, { status: newStatus }).catch(() => setError('Task 상태 변경에 실패했습니다.'));
+    }
+  }
+
+  // ── Task 전체 확정 (plan_reviewing → confirmed) ───────────────────────────────
+
+  async function handleConfirmAll() {
+    const ids = reviewingTasks.map((t) => t.id);
+    ids.forEach((id) => storeUpdateTask(id, { status: 'confirmed' }));
+    try {
+      await Promise.all(ids.map((id) => updateTask(id, { status: 'confirmed' })));
+    } catch {
+      setError('전체 확정에 실패했습니다.');
+    }
+  }
+
+  // ── Spec 최종 확정 ────────────────────────────────────────────────────────────
+
+  async function handleFinalConfirmSpec(specId: string) {
+    setError(null);
+    try {
+      await finalConfirmSpec(specId);
+      const loadedSpecs = await getSpecs(projectId).catch(() => [] as Spec[]);
+      setSpecs(loadedSpecs as Spec[]);
+    } catch {
+      setError('최종 확정에 실패했습니다.');
+    }
+  }
+
+  function handleFileDrop(e: React.DragEvent) {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
     if (!file) return;
     handleFileUpload(file, file.type.startsWith('image/') ? 'image' : 'document');
   }
 
+  // ── 렌더 ─────────────────────────────────────────────────────────────────────
+
+  const colStyle: React.CSSProperties = {
+    flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
+    background: 'var(--bg-secondary)', border: '1px solid var(--border)',
+    borderRadius: 8, padding: '12px 10px', gap: 8, minHeight: 300,
+  };
+
+  const colHeaderStyle: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4,
+  };
+
+  const colCountStyle: React.CSSProperties = {
+    fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-primary)',
+    borderRadius: 10, padding: '1px 7px',
+  };
+
   return (
     <div className="page-container">
       <div className="page-header">
         <h2>설계 단계</h2>
-        <span className="badge">{projectSpecs.length}개 Spec · {designTasks.length}개 Task</span>
+        <span className="badge">
+          {projectSpecs.length}개 Spec · {reviewingTasks.length + confirmedTasks.length}개 Task
+        </span>
       </div>
+
+      {/* 숨김 파일 입력 */}
+      <input ref={fileInputRef} type="file" accept=".pdf,.docx,.txt,.md" style={{ display: 'none' }}
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, 'document'); e.target.value = ''; }}
+      />
+      <input ref={imageInputRef} type="file" accept="image/*" style={{ display: 'none' }}
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, 'image'); e.target.value = ''; }}
+      />
 
       {error && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#450a0a', color: '#fca5a5', border: '1px solid #7f1d1d', borderRadius: 6, padding: '8px 12px', fontSize: 13, marginBottom: 8 }}>
@@ -280,50 +432,192 @@ export default function DesignPhase({ projectId }: Props) {
         </div>
       )}
 
-      {/* 업로드 드롭존 */}
-      <div className="dropzone" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
-        <Upload size={16} />
-        <span>파일 / 이미지를 드래그하거나</span>
-        <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
-          <input ref={fileInputRef} type="file" accept=".pdf,.docx,.txt,.md" style={{ display: 'none' }}
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, 'document'); e.target.value = ''; }}
-          />
-          <input ref={imageInputRef} type="file" accept="image/*" style={{ display: 'none' }}
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, 'image'); e.target.value = ''; }}
-          />
-          <button className="btn-sm" onClick={() => fileInputRef.current?.click()}><FileText size={11} /> 파일 업로드</button>
-          <button className="btn-sm" onClick={() => imageInputRef.current?.click()}><Image size={11} /> 이미지</button>
-          <button className="btn-sm" onClick={() => setShowTextModal(true)}><Plus size={11} /> 텍스트 입력</button>
-        </div>
-      </div>
+      {/* 4컬럼 Kanban */}
+      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+        <div style={{ display: 'flex', gap: 12, flex: 1, minHeight: 0 }}>
 
-      {/* Spec 목록 */}
-      {projectSpecs.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            업로드된 Spec ({projectSpecs.length})
+          {/* ── 컬럼 1: Spec 입력 ── */}
+          <div style={colStyle} onDragOver={(e) => e.preventDefault()} onDrop={handleFileDrop}>
+            <div style={colHeaderStyle}>
+              <span style={{ fontWeight: 600, fontSize: 13 }}>Spec 입력</span>
+              <span style={colCountStyle}>{uploadedSpecs.length}</span>
+            </div>
+
+            {/* 업로드 버튼 3개 */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <button
+                className="btn-sm"
+                style={{ justifyContent: 'flex-start', gap: 8 }}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <FileText size={12} /> 파일 업로드
+              </button>
+              <button
+                className="btn-sm"
+                style={{ justifyContent: 'flex-start', gap: 8 }}
+                onClick={() => imageInputRef.current?.click()}
+              >
+                <Image size={12} /> 이미지
+              </button>
+              <button
+                className="btn-sm"
+                style={{ justifyContent: 'flex-start', gap: 8 }}
+                onClick={() => setShowTextModal(true)}
+              >
+                <Plus size={12} /> 텍스트 입력
+              </button>
+            </div>
+
+            {/* 구분선 */}
+            {uploadedSpecs.length > 0 && (
+              <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
+            )}
+
+            {/* 업로드된 Spec 카드 목록 */}
+            {uploadedSpecs.map((spec) => {
+              const label = spec.source_type === 'text'
+                ? (spec.raw_content?.slice(0, 40) ?? 'Spec 텍스트') + ((spec.raw_content?.length ?? 0) > 40 ? '…' : '')
+                : spec.source_path?.split(/[/\\]/).pop() ?? 'Spec 파일';
+              const isAnalyzing = analyzingSpecIds.has(spec.id);
+              return (
+                <div key={spec.id} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <FileText size={12} style={{ flexShrink: 0, color: 'var(--text-muted)' }} />
+                    <span style={{ fontSize: 12, fontWeight: 500, flex: 1, wordBreak: 'break-all' }}>{label}</span>
+                    <button className="btn-icon" title="삭제" onClick={() => handleDeleteSpec(spec.id)} disabled={isAnalyzing}>
+                      <X size={11} />
+                    </button>
+                  </div>
+                  <button
+                    className="btn-sm"
+                    onClick={() => handleAnalyze(spec.id)}
+                    disabled={isAnalyzing}
+                    style={{ opacity: isAnalyzing ? 0.5 : 1 }}
+                  >
+                    {isAnalyzing ? <Loader size={10} /> : <Upload size={10} />}
+                    {isAnalyzing ? '분석 중…' : '분석 시작'}
+                  </button>
+                </div>
+              );
+            })}
+
+            {uploadedSpecs.length === 0 && (
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 12 }}>
+                파일을 드래그하거나 위 버튼으로 업로드하세요
+              </p>
+            )}
           </div>
-          {projectSpecs.map((spec) => (
-            <SpecCard
-              key={spec.id}
-              spec={spec}
-              onAnalyze={handleAnalyze}
-              onConfirm={handleConfirm}
-              onDelete={handleDelete}
-              isAnalyzing={analyzingSpecIds.has(spec.id)}
-            />
-          ))}
+
+          {/* ── 컬럼 2: AI 분석중 ── */}
+          <div style={colStyle}>
+            <div style={colHeaderStyle}>
+              <span style={{ fontWeight: 600, fontSize: 13 }}>AI 분석중</span>
+              <span style={colCountStyle}>{analyzingSpecs.length}</span>
+            </div>
+
+            {analyzingSpecs.map((spec) => {
+              const label = spec.source_type === 'text'
+                ? (spec.raw_content?.slice(0, 40) ?? 'Spec 텍스트') + ((spec.raw_content?.length ?? 0) > 40 ? '…' : '')
+                : spec.source_path?.split(/[/\\]/).pop() ?? 'Spec 파일';
+              return (
+                <div key={spec.id} style={{ background: 'var(--bg-primary)', border: '1px solid #92400e', borderRadius: 6, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Loader size={12} style={{ color: '#f59e0b', flexShrink: 0 }} className="animate-spin" />
+                    <span style={{ fontSize: 12, fontWeight: 500, flex: 1, wordBreak: 'break-all' }}>{label}</span>
+                  </div>
+                  <span style={{ fontSize: 11, color: '#f59e0b' }}>Task를 분리하고 있습니다…</span>
+                </div>
+              );
+            })}
+
+            {analyzingSpecs.length === 0 && (
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 24 }}>
+                분석 시작 후 여기에 표시됩니다
+              </p>
+            )}
+          </div>
+
+          {/* ── 컬럼 3: Task 분해됨 ── */}
+          <DroppableColumn
+            id={COL_REVIEWING}
+            title="Task 분해됨"
+            count={reviewingTasks.length}
+            headerExtra={
+              reviewingTasks.length > 0 ? (
+                <button
+                  className="btn-sm"
+                  style={{ marginLeft: 'auto', background: '#1d4ed8', color: '#fff', fontSize: 10 }}
+                  onClick={handleConfirmAll}
+                >
+                  <CheckCircle size={10} /> 전체 확정→
+                </button>
+              ) : null
+            }
+          >
+            <SortableContext items={reviewingTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+              {reviewingTasks.map((task) => (
+                <DesignTaskCard
+                  key={task.id}
+                  task={task}
+                  onEdit={setEditingTask}
+                  onDelete={handleDeleteTask}
+                />
+              ))}
+            </SortableContext>
+            {reviewingTasks.length === 0 && (
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 24 }}>
+                분석 완료 후 Task가 여기에 나타납니다
+              </p>
+            )}
+          </DroppableColumn>
+
+          {/* ── 컬럼 4: 확정됨 ── */}
+          <DroppableColumn
+            id={COL_CONFIRMED}
+            title="확정됨"
+            count={confirmedTasks.length}
+            headerExtra={
+              confirmedTasks.length > 0 && uploadedSpecs.length > 0 ? (
+                <button
+                  className="btn-sm"
+                  style={{ marginLeft: 'auto', background: '#166534', color: '#bbf7d0', fontSize: 10 }}
+                  onClick={() => handleFinalConfirmSpec(uploadedSpecs[0].id)}
+                >
+                  Spec 확정
+                </button>
+              ) : null
+            }
+          >
+            <SortableContext items={confirmedTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+              {confirmedTasks.map((task) => (
+                <DesignTaskCard
+                  key={task.id}
+                  task={task}
+                  onEdit={setEditingTask}
+                  onDelete={handleDeleteTask}
+                />
+              ))}
+            </SortableContext>
+            {confirmedTasks.length === 0 && (
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 24 }}>
+                Task를 드래그하거나 전체 확정 버튼을 사용하세요
+              </p>
+            )}
+          </DroppableColumn>
+
         </div>
+      </DndContext>
+
+      {showTextModal && (
+        <TextInputModal onSubmit={handleTextUpload} onClose={() => setShowTextModal(false)} />
       )}
-
-      {/* 분해된 Task Kanban */}
-      <KanbanBoard
-        columns={TASK_COLUMNS}
-        tasks={designTasks}
-        onStatusChange={handleTaskStatusChange}
-      />
-
-      {showTextModal && <TextInputModal onSubmit={handleTextUpload} onClose={() => setShowTextModal(false)} />}
+      {editingTask && (
+        <TaskEditModal
+          task={editingTask}
+          onSave={handleSaveTask}
+          onClose={() => setEditingTask(null)}
+        />
+      )}
     </div>
   );
 }

@@ -159,7 +159,7 @@ async def _save_tasks(project_id: str, spec_id: str, task_items: list[dict]) -> 
                 priority=item.get("priority", "medium"),
                 complexity=item.get("complexity", "medium"),
                 dependencies=None,  # 제목 기반 의존성은 저장 후 별도 매핑 필요
-                status="backlog",
+                status="plan_reviewing",
                 sort_order=idx,
             )
             session.add(task)
@@ -239,10 +239,10 @@ async def analyze_spec_and_create_tasks(spec_id: str) -> None:
         # 4. Task DB 저장
         saved_tasks = await _save_tasks(project_id, spec_id, task_items)
 
-        # 5. Spec 상태 → analyzed
+        # 5. Spec 상태 → uploaded (분석 완료, 칸반 column 1에서 사라짐)
         await _update_spec_status(
             spec_id,
-            "analyzed",
+            "uploaded",
             analysis_result=json.dumps(parsed or {}, ensure_ascii=False),
         )
 

@@ -33,13 +33,9 @@ export interface ProjectCreate {
 // ── Task ──────────────────────────────────────────────────────────────────────
 
 export type TaskStatus =
-  | 'backlog'
   | 'planning'
-  | 'plan_review'
-  | 'coding'
-  | 'reviewing'
-  | 'done'
-  | 'failed';
+  | 'plan_reviewing'
+  | 'confirmed';
 
 export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
 export type TaskComplexity = 'trivial' | 'low' | 'medium' | 'high' | 'very_high';
@@ -90,7 +86,7 @@ export interface TaskUpdate {
 // ── Spec ──────────────────────────────────────────────────────────────────────
 
 export type SpecSourceType = 'document' | 'image' | 'text' | 'url';
-export type SpecStatus = 'uploaded' | 'analyzing' | 'analyzed' | 'confirmed';
+export type SpecStatus = 'uploaded' | 'analyzing' | 'final_confirmed';
 
 export interface Spec {
   id: string;

@@ -92,6 +92,11 @@ export async function updateTask(taskId: string, body: TaskUpdate): Promise<Task
   return response.data;
 }
 
+/** Task 삭제 */
+export async function deleteTask(taskId: string): Promise<void> {
+  await client.delete(`/api/tasks/${taskId}`);
+}
+
 // ── Specs ─────────────────────────────────────────────────────────────────────
 
 /** 프로젝트의 전체 Spec 목록 조회 */
@@ -121,9 +126,9 @@ export async function analyzeSpec(specId: string): Promise<void> {
   await client.post(`/api/agent/specs/${specId}/analyze`);
 }
 
-/** 분석된 Spec 확정 (개발 단계 Backlog으로 이동) */
-export async function confirmSpec(specId: string): Promise<void> {
-  await client.post(`/api/specs/${specId}/confirm`);
+/** Spec 최종 확정 */
+export async function finalConfirmSpec(specId: string): Promise<void> {
+  await client.post(`/api/specs/${specId}/final-confirm`);
 }
 
 // ── Git ───────────────────────────────────────────────────────────────────────

@@ -43,16 +43,12 @@ class Task(Base):
     )
     status: Mapped[str] = mapped_column(
         Enum(
-            "backlog",
             "planning",
-            "plan_review",
-            "coding",
-            "reviewing",
-            "done",
-            "failed",
+            "plan_reviewing",
+            "confirmed",
             name="task_status_enum",
         ),
-        default="backlog",
+        default="plan_reviewing",
     )
     dependencies: Mapped[Optional[Any]] = mapped_column(JSON)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)

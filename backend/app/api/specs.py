@@ -15,7 +15,7 @@ project_specs_router = APIRouter(
     tags=["specs"],
 )
 
-# DELETE /api/specs/{spec_id}, POST /api/specs/{spec_id}/confirm
+# DELETE /api/specs/{spec_id}, POST /api/specs/{spec_id}/final-confirm
 specs_router = APIRouter(prefix="/specs", tags=["specs"])
 
 
@@ -46,41 +46,40 @@ async def delete_spec(
     return ApiResponse.ok(None)
 
 
-@specs_router.post("/{spec_id}/confirm")
-async def confirm_spec(
+@specs_router.post("/{spec_id}/final-confirm")
+async def final_confirm_spec(
     spec_id: str
 ) -> ApiResponse[dict]:
     """
-    분석된 Spec을 확정합니다.
+    Spec을 최종 확정합니다.
 
-    - Spec 상태: 'analyzed' → 'confirmed'
-    - 연결된 Task들 상태: 'backlog' (이미 분석 시 저장됨)
-    - 이후 개발 단계(DevPhase) Kanban의 Backlog 컬럼에 표시됩니다.
+    - 모든 Task가 'confirmed' 상태일 때 Spec을 'final_confirmed'로 변경합니다.
     """
     spec = await spec_repository.find_by_id(spec_id)
     if not spec:
         raise HTTPException(status_code=404, detail="Spec not found")
 
-    if spec.status not in ("analyzed", "confirmed"):
+    if spec.status == "analyzing":
         raise HTTPException(
             status_code=409,
-            detail=f"분석 완료된 Spec만 확정할 수 있습니다. 현재 상태: {spec.status}",
+            detail="분석 중인 Spec은 확정할 수 없습니다.",
         )
 
     async with db_conn.transaction() as session:
         fresh_spec = await spec_repository.find_by_id(spec_id, session)
-        fresh_spec.status = "confirmed"
+        fresh_spec.status = "final_confirmed"
         await session.flush()
 
-    # 연결된 Task 목록 조회
     tasks = await task_repository.find_by_project(spec.project_id)
     spec_tasks = [t for t in tasks if t.spec_id == spec_id]
+    confirmed_count = sum(1 for t in spec_tasks if t.status == "confirmed")
 
     return ApiResponse.ok(
         {
             "spec_id": spec_id,
-            "status": "confirmed",
+            "status": "final_confirmed",
             "task_count": len(spec_tasks),
-            "message": f"{len(spec_tasks)}개 Task가 개발 단계 Backlog으로 이동했습니다.",
+            "confirmed_count": confirmed_count,
+            "message": f"{confirmed_count}/{len(spec_tasks)}개 Task가 확정되었습니다.",
         }
     )

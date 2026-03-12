@@ -30,7 +30,7 @@ class Spec(Base):
     raw_content: Mapped[Optional[str]] = mapped_column(Text)
     analysis_result: Mapped[Optional[str]] = mapped_column(Text)
     status: Mapped[str] = mapped_column(
-        Enum("uploaded", "analyzing", "analyzed", "confirmed", name="spec_status_enum"),
+        Enum("uploaded", "analyzing", "final_confirmed", name="spec_status_enum"),
         default="uploaded",
     )
     created_at: Mapped[datetime] = mapped_column(

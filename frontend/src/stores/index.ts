@@ -114,8 +114,9 @@ export const useTaskStore = create<TaskState>((set) => ({
           const newTasks = data.tasks.filter((t) => !existingIds.has(t.id)) as unknown as Task[];
           return {
             analyzingSpecIds: next,
+            // 분석 완료 후 spec은 'uploaded'로 복귀 (kanban column 1에서 사라짐)
             specs: s.specs.map((sp) =>
-              sp.id === data.spec_id ? { ...sp, status: 'analyzed' as SpecStatus } : sp
+              sp.id === data.spec_id ? { ...sp, status: 'uploaded' as SpecStatus } : sp
             ),
             tasks: [...s.tasks, ...newTasks],
           };

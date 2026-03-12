@@ -22,13 +22,9 @@ class ProjectStatus(str, Enum):
 
 
 class TaskStatus(str, Enum):
-    backlog = "backlog"
     planning = "planning"
-    plan_review = "plan_review"
-    coding = "coding"
-    reviewing = "reviewing"
-    done = "done"
-    failed = "failed"
+    plan_reviewing = "plan_reviewing"
+    confirmed = "confirmed"
 
 
 class TaskPriority(str, Enum):
@@ -56,8 +52,7 @@ class SpecSourceType(str, Enum):
 class SpecStatus(str, Enum):
     uploaded = "uploaded"
     analyzing = "analyzing"
-    analyzed = "analyzed"
-    confirmed = "confirmed"
+    final_confirmed = "final_confirmed"
 
 
 class WorktreeStatus(str, Enum):
