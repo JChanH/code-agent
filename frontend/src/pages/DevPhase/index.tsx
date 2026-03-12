@@ -12,7 +12,7 @@ const COLUMNS = [
   { id: "done"      as TaskStatus, title: "Done" },
 ];
 
-const DEV_STATUSES: TaskStatus[] = ["confirmed", "coding", "reviewing", "done"];
+const DEV_STATUSES: TaskStatus[] = ["confirmed", "coding", "reviewing", "done", "failed"];
 
 interface Props { projectId: string; }
 

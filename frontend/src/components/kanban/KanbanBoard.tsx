@@ -20,24 +20,45 @@ interface Props {
 export default function KanbanBoard({ columns, tasks, users = [], onStatusChange, onCardClick, onRun }: Props) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
+  function getColumnIdForTask(task: Task): TaskStatus | null {
+    if (columns.some((c) => c.id === task.status)) {
+      return task.status;
+    }
+
+    // Development board: include failed tasks in Done column
+    if (task.status === 'failed' && columns.some((c) => c.id === 'done')) {
+      return 'done';
+    }
+
+    return null;
+  }
+
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
     const taskId = active.id as string;
-    const newStatus = over.id as TaskStatus;
+    const overId = over.id as string;
+    const activeTask = tasks.find((t) => t.id === taskId);
+    if (!activeTask) return;
 
     // over.id could be a column id or a card id — resolve to column id
-    const targetColumn = columns.find((c) => c.id === newStatus);
-    if (targetColumn) {
-      onStatusChange(taskId, newStatus);
-    } else {
-      // dropped on another card — find which column it belongs to
-      const targetTask = tasks.find((t) => t.id === newStatus);
-      if (targetTask) {
-        onStatusChange(taskId, targetTask.status);
-      }
+    const targetColumn = columns.find((c) => c.id === overId);
+    const targetTask = tasks.find((t) => t.id === overId);
+    const targetColumnId = targetColumn
+      ? targetColumn.id
+      : targetTask
+      ? getColumnIdForTask(targetTask)
+      : null;
+
+    if (!targetColumnId) return;
+
+    const activeColumnId = getColumnIdForTask(activeTask);
+    if (activeColumnId === targetColumnId) {
+      return;
     }
+
+    onStatusChange(taskId, targetColumnId);
   }
 
   return (
@@ -48,7 +69,7 @@ export default function KanbanBoard({ columns, tasks, users = [], onStatusChange
             key={col.id}
             id={col.id}
             title={col.title}
-            tasks={tasks.filter((t) => t.status === col.id)}
+            tasks={tasks.filter((t) => getColumnIdForTask(t) === col.id)}
             users={users}
             onCardClick={onCardClick}
             onRun={onRun}

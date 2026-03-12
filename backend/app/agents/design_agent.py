@@ -247,7 +247,6 @@ async def analyze_spec_and_create_tasks(spec_id: str) -> None:
             "analyzed",
             analysis_result=json.dumps(parsed or {}, ensure_ascii=False),
         )
-        print("스펙 업데이트")
 
         # 6. 완료 브로드캐스트
         await broadcast(

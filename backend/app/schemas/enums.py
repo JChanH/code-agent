@@ -20,11 +20,14 @@ class ProjectStatus(str, Enum):
     developing = "developing"
     completed = "completed"
 
-
+# task 상태
 class TaskStatus(str, Enum):
-    planning = "planning"
     plan_reviewing = "plan_reviewing"
     confirmed = "confirmed"
+    coding = "coding"
+    reviewing = "reviewing"
+    done = "done"
+    failed = "failed"
 
 
 class TaskPriority(str, Enum):
