@@ -21,7 +21,8 @@
       "Bash(python -c \"from claude_agent_sdk import query, ResultMessage, AssistantMessage; import inspect; print\\(inspect.signature\\(query\\)\\)\")",
       "Bash(python -c \"from claude_agent_sdk.types import ResultMessage, AssistantMessage, TextBlock; import inspect; print\\(inspect.signature\\(ResultMessage.__init__\\)\\); print\\(''---''\\); print\\([f for f in dir\\(ResultMessage\\) if not f.startswith\\(''_''\\)]\\)\")",
       "Bash(python -c \"from app.api import agent_router, specs_router; from app.agents.design_agent import analyze_spec_and_create_tasks; print\\(''OK''\\)\")",
-      "Bash(grep -r \"create_all\\\\|CREATE TABLE\\\\|init_db\" c:/workspace/auto_code_demo/agent_practice/code-agent/backend/app --include=*.py -l)"
+      "Bash(grep -r \"create_all\\\\|CREATE TABLE\\\\|init_db\" c:/workspace/auto_code_demo/agent_practice/code-agent/backend/app --include=*.py -l)",
+      "Bash(find /c/workspace/auto_code_demo/agent_practice/code-agent/frontend/src -type f \\\\\\(-name *.tsx -o -name *.jsx \\\\\\))"
     ]
   }
 }

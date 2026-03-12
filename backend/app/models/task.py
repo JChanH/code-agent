@@ -16,31 +16,50 @@ from app.models.common import generate_uuid
 class Task(Base):
     __tablename__ = "tasks"
 
+    # 아이디
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    
+    # 프로젝트 아아디
     project_id: Mapped[str] = mapped_column(
         String(36),
         ForeignKey("projects.id", ondelete="CASCADE"),
         nullable=False,
     )
+    
+    # 스펙 아이디
     spec_id: Mapped[Optional[str]] = mapped_column(
         String(36),
         ForeignKey("specs.id", ondelete="SET NULL"),
     )
+    
+    # 담당 유저 아이디
     assigned_user_id: Mapped[Optional[str]] = mapped_column(
         String(36),
         ForeignKey("users.id", ondelete="SET NULL"),
     )
+    
+    # 제목
     title: Mapped[str] = mapped_column(String(500), nullable=False)
+    
+    # 설명
     description: Mapped[str] = mapped_column(Text, nullable=False)
+    
+    
     acceptance_criteria: Mapped[Optional[Any]] = mapped_column(JSON)
+    
+    # 중요도
     priority: Mapped[str] = mapped_column(
         Enum("low", "medium", "high", "critical", name="task_priority_enum"),
         default="medium",
     )
+    
+    # 복잡도
     complexity: Mapped[str] = mapped_column(
         Enum("trivial", "low", "medium", "high", "very_high", name="task_complexity_enum"),
         default="medium",
     )
+    
+    # task 상태
     status: Mapped[str] = mapped_column(
         Enum(
             "planning",
@@ -50,15 +69,22 @@ class Task(Base):
         ),
         default="plan_reviewing",
     )
+    
     dependencies: Mapped[Optional[Any]] = mapped_column(JSON)
+    
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    
     auto_approve: Mapped[bool] = mapped_column(Boolean, default=False)
+    
     auto_approve_config: Mapped[Optional[Any]] = mapped_column(JSON)
+    
     git_commit_hash: Mapped[Optional[str]] = mapped_column(String(40))
+    
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
         server_default=func.current_timestamp(),
     )
+    
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
         server_default=func.current_timestamp(),

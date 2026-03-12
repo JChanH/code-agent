@@ -15,31 +15,62 @@ from app.models.common import generate_uuid
 
 class Project(Base):
     __tablename__ = "projects"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    
+    # 아이디
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=generate_uuid
+    )
+    
+    # 프로젝트 이름
+    name: Mapped[str] = mapped_column(
+        String(255), nullable=False
+    )
+    
+    # 프로젝트 설명
     description: Mapped[Optional[str]] = mapped_column(Text)
+    
+    # 프로젝트 타입
     project_type: Mapped[str] = mapped_column(
         Enum("new", "existing", name="project_type_enum"),
         nullable=False,
         default="existing",
     )
-    repo_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    local_repo_path: Mapped[str] = mapped_column(String(1000), nullable=False)
-    main_branch: Mapped[str] = mapped_column(String(100), default="main")
+    
+    # git url
+    repo_url: Mapped[Optional[str]] = mapped_column(
+        String(500), nullable=True
+    )
+    
+    # 로컬 경로
+    local_repo_path: Mapped[str] = mapped_column(
+        String(1000), nullable=False
+    )
+    
+    # 메인 브랜치
+    main_branch: Mapped[str] = mapped_column(
+        String(100), default="main"
+    )
+    
+    # 사용하는 프로그램 언어
     project_stack: Mapped[str] = mapped_column(
         Enum("python", "java", "other", name="project_stack_enum"),
         default="python",
     )
+    
+    # 사용라는 프레임 워크
     framework: Mapped[Optional[str]] = mapped_column(String(100))
+    
+    # 프로젝트 상태
     status: Mapped[str] = mapped_column(
         Enum("setup", "designing", "developing", "completed", name="project_status_enum"),
         default="setup",
     )
+    
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
         server_default=func.current_timestamp(),
     )
+    
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
         server_default=func.current_timestamp(),

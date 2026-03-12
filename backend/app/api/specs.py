@@ -23,6 +23,11 @@ specs_router = APIRouter(prefix="/specs", tags=["specs"])
 async def list_specs(
     project_id: str
 ) -> ApiResponse[list[SpecResponse]]:
+    """
+    프로젝트에 속한 모든 Spec 목록을 조회합니다.
+
+    - project_id: 조회할 프로젝트의 ID
+    """
     return ApiResponse.ok(await specs_service.list_specs(project_id))
 
 
@@ -33,6 +38,14 @@ async def upload_spec(
     file: UploadFile = File(None),
     raw_content: str = Form(None),
 ) -> ApiResponse[SpecResponse]:
+    """
+    프로젝트에 새 Spec을 업로드합니다.
+
+    - project_id: 대상 프로젝트의 ID
+    - source_type: Spec 소스 유형 (document, text 등)
+    - file: 업로드할 파일 (source_type이 document일 때 사용)
+    - raw_content: 직접 입력한 텍스트 내용 (source_type이 text일 때 사용)
+    """
     return ApiResponse.ok(
         await specs_service.upload_spec(project_id, source_type, file=file, raw_content=raw_content)
     )
@@ -42,6 +55,11 @@ async def upload_spec(
 async def delete_spec(
     spec_id: str
 ) -> ApiResponse[None]:
+    """
+    지정한 Spec을 삭제합니다.
+
+    - spec_id: 삭제할 Spec의 ID
+    """
     await specs_service.delete_spec(spec_id)
     return ApiResponse.ok(None)
 
