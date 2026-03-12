@@ -92,4 +92,3 @@ async def websocket_endpoint(websocket: WebSocket, project_id: str):
             await ws_manager.send_to(websocket, {"type": "ack", "data": data})
     except WebSocketDisconnect:
         ws_manager.disconnect(websocket, project_id)
-

@@ -258,6 +258,8 @@ async def analyze_spec_and_create_tasks(spec_id: str) -> None:
                 "tasks": [
                     {
                         "id": t.id,
+                        "project_id": t.project_id,
+                        "spec_id": t.spec_id,
                         "title": t.title,
                         "description": t.description,
                         "priority": t.priority,
