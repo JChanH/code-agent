@@ -43,7 +43,7 @@ class Spec(Base):
     
     # 상태
     status: Mapped[str] = mapped_column(
-        Enum("uploaded", "analyzing", "final_confirmed", name="spec_status_enum"),
+        Enum("uploaded", "analyzing", "analyzed", "final_confirmed", name="spec_status_enum"),
         default="uploaded",
     )
     created_at: Mapped[datetime] = mapped_column(

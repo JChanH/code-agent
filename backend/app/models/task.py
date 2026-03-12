@@ -44,7 +44,6 @@ class Task(Base):
     # 설명
     description: Mapped[str] = mapped_column(Text, nullable=False)
     
-    
     acceptance_criteria: Mapped[Optional[Any]] = mapped_column(JSON)
     
     # 중요도
@@ -62,9 +61,7 @@ class Task(Base):
     # task 상태
     status: Mapped[str] = mapped_column(
         Enum(
-            "planning",
-            "plan_reviewing",
-            "confirmed",
+            'backlog', 'coding', 'reviewing', 'done', 'failed',
             name="task_status_enum",
         ),
         default="plan_reviewing",

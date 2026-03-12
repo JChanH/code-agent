@@ -15,7 +15,7 @@ from app.utils.db_handler_sqlalchemy import db_conn
 
 logger = logging.getLogger(__name__)
 
-# Structured Output — 에이전트가 반환해야 하는 JSON 스키마
+# Structured Output — 설계 에이전트가 반환해야 하는 JSON 스키마
 TASK_LIST_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
@@ -70,7 +70,6 @@ def _get_stack_context(project: Project) -> str:
             "- 라우터는 app/api/ 하위에 배치\n"
             "- 모델은 app/models/, 스키마는 app/schemas/\n"
             "- 비즈니스 로직은 app/services/\n"
-            "- 테스트는 tests/ 하위에 pytest로 작성"
         )
     if project.project_stack == "java":
         return (
@@ -84,6 +83,7 @@ def _get_stack_context(project: Project) -> str:
 def _build_prompt(spec_content: str, project: Project) -> str:
     stack_context = _get_stack_context(project)
 
+    codebase_section = ""
     if project.local_repo_path:
         codebase_section = f"""
             ## 코드베이스 탐색 (필수)
@@ -94,7 +94,7 @@ def _build_prompt(spec_content: str, project: Project) -> str:
             3. 기존 패턴/네이밍 규칙을 Task 설계에 반영
             4. 이미 구현된 기능은 Task에서 제외하거나 수정 Task로만 포함
         """
-    
+
     return f"""당신은 소프트웨어 설계 전문가입니다.
         아래 스펙 문서를 분석하여 개발 Task 목록으로 분해해주세요.
 
@@ -123,7 +123,7 @@ async def _load_spec_content(spec: Spec) -> str:
         return spec.raw_content
 
     if spec.source_path:
-        # 파일에서 텍스트 추출 (PDF/DOCX는 별도 라이브러리 필요, 여기서는 텍스트 파일 처리)
+        # TODO: 파일에서 텍스트 추출 (PDF/DOCX는 별도 라이브러리 필요, 여기서는 텍스트 파일 처리)
         try:
             with open(spec.source_path, encoding="utf-8", errors="ignore") as f:
                 return f.read()
@@ -211,6 +211,7 @@ async def analyze_spec_and_create_tasks(spec_id: str) -> None:
 
         parsed: dict | None = None
 
+        print("에이전트 시작")
         async for message in query(prompt=prompt, options=options):
             # 에이전트 메시지를 WebSocket으로 전달
             try:
@@ -223,6 +224,7 @@ async def analyze_spec_and_create_tasks(spec_id: str) -> None:
             # ResultMessage에서 structured_output 추출 (output_format=json_schema 사용 시)
             if hasattr(message, "structured_output") and message.structured_output is not None:
                 parsed = message.structured_output
+                
             # fallback: AssistantMessage content에서 텍스트 추출 후 JSON 파싱
             elif hasattr(message, "result") and message.result:
                 try:
@@ -239,12 +241,13 @@ async def analyze_spec_and_create_tasks(spec_id: str) -> None:
         # 4. Task DB 저장
         saved_tasks = await _save_tasks(project_id, spec_id, task_items)
 
-        # 5. Spec 상태 → uploaded (분석 완료, 칸반 column 1에서 사라짐)
+        # 5. Spec 상태 → analyzed (분석 완료)
         await _update_spec_status(
             spec_id,
-            "uploaded",
+            "analyzed",
             analysis_result=json.dumps(parsed or {}, ensure_ascii=False),
         )
+        print("스펙 업데이트")
 
         # 6. 완료 브로드캐스트
         await broadcast(

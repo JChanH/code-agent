@@ -1,7 +1,5 @@
 """Agent execution API router."""
 
-import asyncio
-
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from app.agents.design_agent import analyze_spec_and_create_tasks
@@ -24,10 +22,11 @@ async def run_agent(task_id: str):
 @agent_router.post("/specs/{spec_id}/analyze", response_model=ApiResponse[dict])
 async def analyze_spec(spec_id: str, background_tasks: BackgroundTasks):
     """
-    Spec을 비동기로 분석하여 Task 목록으로 분해합니다.
+    Spec을 분석하여 Task 목록으로 분해합니다.
 
+    [subprocess]
     - Spec 상태를 'analyzing'으로 즉시 변경
-    - Design Agent를 백그라운드로 실행
+    - Design Agent를 백그라운드로 실행(claude agent sdk - subprocess)
     - 진행상황은 WebSocket(/ws/{project_id})으로 실시간 전송
     """
     spec = await spec_repository.find_by_id(spec_id)
@@ -36,7 +35,7 @@ async def analyze_spec(spec_id: str, background_tasks: BackgroundTasks):
 
     if spec.status == "analyzing":
         raise HTTPException(status_code=409, detail="이미 분석 중입니다.")
-
+    
     background_tasks.add_task(analyze_spec_and_create_tasks, spec_id)
 
     return ApiResponse.ok(
