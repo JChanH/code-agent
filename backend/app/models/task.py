@@ -61,7 +61,7 @@ class Task(Base):
     # task 상태
     status: Mapped[str] = mapped_column(
         Enum(
-            'backlog', 'coding', 'reviewing', 'done', 'failed',
+            'plan_reviewing', 'confirmed', 'coding', 'reviewing', 'done', 'failed',
             name="task_status_enum",
         ),
         default="plan_reviewing",

@@ -3,11 +3,13 @@ import { useTaskStore, useAppStore } from "../../stores";
 import type { TaskStatus } from "../../types";
 
 const COLUMNS = [
-  { id: "confirmed" as TaskStatus, title: "Ready" },
-  { id: "planning" as TaskStatus, title: "In Progress" },
+  { id: "confirmed" as TaskStatus, title: "Backlog" },
+  { id: "coding"    as TaskStatus, title: "In Progress" },
+  { id: "reviewing" as TaskStatus, title: "AI Review" },
+  { id: "done"      as TaskStatus, title: "Done" },
 ];
 
-const DEV_STATUSES: TaskStatus[] = ["confirmed", "planning"];
+const DEV_STATUSES: TaskStatus[] = ["confirmed", "coding", "reviewing", "done"];
 
 interface Props { projectId: string; }
 

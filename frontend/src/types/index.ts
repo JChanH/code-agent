@@ -17,9 +17,12 @@ export type ProjectStack = 'python' | 'java' | 'other';
 export type ProjectStatus = 'setup' | 'designing' | 'developing' | 'completed';
 
 export type TaskStatus =
-  | 'planning'
   | 'plan_reviewing'
-  | 'confirmed';
+  | 'confirmed'
+  | 'coding'
+  | 'reviewing'
+  | 'done'
+  | 'failed';
 
 export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
 export type TaskComplexity = 'trivial' | 'low' | 'medium' | 'high' | 'very_high';
