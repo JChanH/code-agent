@@ -412,7 +412,7 @@ export default function DesignPhase({ projectId }: { projectId: string }) {
       <div className="page-header">
         <h2>설계 단계</h2>
         <span className="badge">
-          {projectSpecs.length}개 Spec · {reviewingTasks.length + confirmedTasks.length}개 Task
+          {reviewingTasks.length + confirmedTasks.length}개 Task
         </span>
       </div>
 
@@ -432,46 +432,41 @@ export default function DesignPhase({ projectId }: { projectId: string }) {
         </div>
       )}
 
+      {/* Spec 입력 패널 (Kanban 외부) */}
+      <div
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+          background: 'var(--bg-secondary)', border: '1px solid var(--border)',
+          borderRadius: 8, marginBottom: 10,
+        }}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={handleFileDrop}
+      >
+        <span style={{ fontSize: 12, color: 'var(--text-muted)', marginRight: 4, flexShrink: 0 }}>Spec 추가</span>
+        <button className="btn-sm" style={{ gap: 6, flexShrink: 0 }} onClick={() => fileInputRef.current?.click()}>
+          <FileText size={12} /> 파일 업로드
+        </button>
+        <button className="btn-sm" style={{ gap: 6, flexShrink: 0 }} onClick={() => imageInputRef.current?.click()}>
+          <Image size={12} /> 이미지
+        </button>
+        <button className="btn-sm" style={{ gap: 6, flexShrink: 0 }} onClick={() => setShowTextModal(true)}>
+          <Plus size={12} /> 텍스트 입력
+        </button>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 'auto' }}>
+          또는 파일을 여기에 드래그하세요
+        </span>
+      </div>
+
       {/* 4컬럼 Kanban */}
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <div style={{ display: 'flex', gap: 12, flex: 1, minHeight: 0 }}>
 
           {/* ── 컬럼 1: Spec 입력 ── */}
-          <div style={colStyle} onDragOver={(e) => e.preventDefault()} onDrop={handleFileDrop}>
+          <div style={colStyle}>
             <div style={colHeaderStyle}>
               <span style={{ fontWeight: 600, fontSize: 13 }}>Spec 입력</span>
               <span style={colCountStyle}>{uploadedSpecs.length}</span>
             </div>
-
-            {/* 업로드 버튼 3개 */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <button
-                className="btn-sm"
-                style={{ justifyContent: 'flex-start', gap: 8 }}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <FileText size={12} /> 파일 업로드
-              </button>
-              <button
-                className="btn-sm"
-                style={{ justifyContent: 'flex-start', gap: 8 }}
-                onClick={() => imageInputRef.current?.click()}
-              >
-                <Image size={12} /> 이미지
-              </button>
-              <button
-                className="btn-sm"
-                style={{ justifyContent: 'flex-start', gap: 8 }}
-                onClick={() => setShowTextModal(true)}
-              >
-                <Plus size={12} /> 텍스트 입력
-              </button>
-            </div>
-
-            {/* 구분선 */}
-            {uploadedSpecs.length > 0 && (
-              <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
-            )}
 
             {/* 업로드된 Spec 카드 목록 */}
             {uploadedSpecs.map((spec) => {
@@ -503,7 +498,7 @@ export default function DesignPhase({ projectId }: { projectId: string }) {
 
             {uploadedSpecs.length === 0 && (
               <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 12 }}>
-                파일을 드래그하거나 위 버튼으로 업로드하세요
+                상단 입력 패널에서 Spec을 업로드하세요
               </p>
             )}
           </div>
