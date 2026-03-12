@@ -23,7 +23,8 @@
       "Bash(python -c \"from app.api import agent_router, specs_router; from app.agents.design_agent import analyze_spec_and_create_tasks; print\\(''OK''\\)\")",
       "Bash(grep -r \"create_all\\\\|CREATE TABLE\\\\|init_db\" c:/workspace/auto_code_demo/agent_practice/code-agent/backend/app --include=*.py -l)",
       "Bash(find /c/workspace/auto_code_demo/agent_practice/code-agent/frontend/src -type f \\\\\\(-name *.tsx -o -name *.jsx \\\\\\))",
-      "Bash(find /c/workspace/auto_code_demo/agent_practice/code-agent/frontend/src -type f \\\\\\(-name *.tsx -o -name *.ts -o -name *.jsx -o -name *.js \\\\\\))"
+      "Bash(find /c/workspace/auto_code_demo/agent_practice/code-agent/frontend/src -type f \\\\\\(-name *.tsx -o -name *.ts -o -name *.jsx -o -name *.js \\\\\\))",
+      "Bash(xargs -I {} basename {})"
     ]
   }
 }

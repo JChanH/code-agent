@@ -14,9 +14,10 @@ interface Props {
   users?: User[];
   onStatusChange: (taskId: string, newStatus: TaskStatus) => void;
   onCardClick?: (task: Task) => void;
+  onRun?: (taskId: string) => void;
 }
 
-export default function KanbanBoard({ columns, tasks, users = [], onStatusChange, onCardClick }: Props) {
+export default function KanbanBoard({ columns, tasks, users = [], onStatusChange, onCardClick, onRun }: Props) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   function handleDragEnd(event: DragEndEvent) {
@@ -50,6 +51,7 @@ export default function KanbanBoard({ columns, tasks, users = [], onStatusChange
             tasks={tasks.filter((t) => t.status === col.id)}
             users={users}
             onCardClick={onCardClick}
+            onRun={onRun}
           />
         ))}
       </div>

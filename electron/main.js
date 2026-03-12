@@ -61,6 +61,12 @@ ipcMain.handle('app:getWsUrl', () => {
   return 'ws://localhost:8000';
 });
 
+ipcMain.handle('shell:openVSCode', async (_event, folderPath) => {
+  const { spawn } = require('child_process');
+  spawn('code', [folderPath], { detached: true, shell: true, stdio: 'ignore' });
+  return true;
+});
+
 // ── App Lifecycle ───────────────────────────
 
 app.on('ready', async () => {

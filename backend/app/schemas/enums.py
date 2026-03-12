@@ -52,6 +52,7 @@ class SpecSourceType(str, Enum):
 class SpecStatus(str, Enum):
     uploaded = "uploaded"
     analyzing = "analyzing"
+    analyzed = "analyzed"
     final_confirmed = "final_confirmed"
 
 

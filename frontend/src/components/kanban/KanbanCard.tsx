@@ -1,12 +1,15 @@
 ﻿import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { CheckCircle2, Clock, Play } from "lucide-react";
+import { CheckCircle2, Clock, Play, Loader, XCircle } from "lucide-react";
 import type { Task, TaskPriority, TaskStatus } from "../../types";
 
 const STATUS_ICON: Record<TaskStatus, React.ReactNode> = {
-  planning: <Clock size={13} style={{ color: "#6366f1" }} />,
   plan_reviewing: <Clock size={13} style={{ color: "#f59e0b" }} />,
-  confirmed: <CheckCircle2 size={13} style={{ color: "#22c55e" }} />,
+  confirmed:      <CheckCircle2 size={13} style={{ color: "#22c55e" }} />,
+  coding:         <Loader size={13} style={{ color: "#6366f1" }} />,
+  reviewing:      <Clock size={13} style={{ color: "#8b5cf6" }} />,
+  done:           <CheckCircle2 size={13} style={{ color: "#10b981" }} />,
+  failed:         <XCircle size={13} style={{ color: "#ef4444" }} />,
 };
 
 const PRIORITY_COLOR: Record<TaskPriority, string> = {
@@ -22,9 +25,10 @@ interface Props {
   task: Task;
   assigneeName?: string;
   onClick?: () => void;
+  onRun?: (taskId: string) => void;
 }
 
-export default function KanbanCard({ task, assigneeName, onClick }: Props) {
+export default function KanbanCard({ task, assigneeName, onClick, onRun }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: task.id });
 
@@ -79,10 +83,13 @@ export default function KanbanCard({ task, assigneeName, onClick }: Props) {
         )}
       </div>
 
-      {/* 액션 버튼: 상태별 */}
-      {task.status === "planning" && (
+      {/* 액션 버튼: confirmed 상태에서 에이전트 실행 */}
+      {task.status === "confirmed" && onRun && (
         <div className="card-actions">
-          <button className="card-btn-run" onClick={(e) => e.stopPropagation()}>
+          <button
+            className="card-btn-run"
+            onClick={(e) => { e.stopPropagation(); onRun(task.id); }}
+          >
             <Play size={10} /> 실행
           </button>
         </div>

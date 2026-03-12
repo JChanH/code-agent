@@ -3,20 +3,33 @@
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from app.agents.design_agent import analyze_spec_and_create_tasks
-from app.repositories import spec_repository
+from app.agents.orchestrator import run_task
+from app.repositories import spec_repository, task_repository
 from app.schemas.common import ApiResponse
 
 agent_router = APIRouter(prefix="/agent", tags=["agent"])
 
 
 @agent_router.post("/run/{task_id}")
-async def run_agent(task_id: str):
-    """Phase 3에서 구현 예정 — 개발 에이전트 실행."""
-    return {
+async def run_agent(task_id: str, background_tasks: BackgroundTasks):
+    """Task의 코드 생성 → 리뷰 사이클을 백그라운드로 실행합니다."""
+    task = await task_repository.find_by_id(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    if task.status != "confirmed":
+        raise HTTPException(
+            status_code=409,
+            detail=f"confirmed 상태의 Task만 실행할 수 있습니다. 현재 상태: {task.status}",
+        )
+
+    background_tasks.add_task(run_task, task_id)
+
+    return ApiResponse.ok({
         "status": "queued",
         "task_id": task_id,
-        "message": "Agent execution will be implemented in Phase 3",
-    }
+        "message": "에이전트 실행이 시작되었습니다. WebSocket으로 진행상황을 확인하세요.",
+    })
 
 
 @agent_router.post("/specs/{spec_id}/analyze", response_model=ApiResponse[dict])

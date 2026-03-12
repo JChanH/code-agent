@@ -9,9 +9,10 @@ interface Props {
   tasks: Task[];
   users?: User[];
   onCardClick?: (task: Task) => void;
+  onRun?: (taskId: string) => void;
 }
 
-export default function KanbanColumn({ id, title, tasks, users = [], onCardClick }: Props) {
+export default function KanbanColumn({ id, title, tasks, users = [], onCardClick, onRun }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id });
 
   const getUserName = (userId: string | null) => {
@@ -35,6 +36,7 @@ export default function KanbanColumn({ id, title, tasks, users = [], onCardClick
               task={task}
               assigneeName={getUserName(task.assigned_user_id)}
               onClick={() => onCardClick?.(task)}
+              onRun={onRun}
             />
           ))}
         </SortableContext>

@@ -8,4 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // App config
   getBackendUrl: () => ipcRenderer.invoke('app:getBackendUrl'),
   getWsUrl: () => ipcRenderer.invoke('app:getWsUrl'),
+
+  // Shell
+  openVSCode: (folderPath) => ipcRenderer.invoke('shell:openVSCode', folderPath),
 });

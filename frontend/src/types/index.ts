@@ -7,6 +7,7 @@ declare global {
       openFile: (filters?: { name: string; extensions: string[] }[]) => Promise<string | null>;
       getBackendUrl: () => Promise<string>;
       getWsUrl: () => Promise<string>;
+      openVSCode: (folderPath: string) => Promise<boolean>;
     };
   }
 }
@@ -41,6 +42,7 @@ export interface Project {
   name: string;
   description: string | null;
   repo_url: string | null;
+  local_repo_path: string;
   main_branch: string;
   project_stack: ProjectStack;
   framework: string | null;

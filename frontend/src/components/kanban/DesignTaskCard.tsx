@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { CheckCircle2, Circle, Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { CheckCircle2, Circle, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Task, TaskPriority } from '../../types';
 
 const PRIORITY_COLOR: Record<TaskPriority, string> = {
@@ -42,10 +42,11 @@ export default function DesignTaskCard({ task, onEdit, onDelete }: Props) {
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={{ ...style, cursor: isDragging ? 'grabbing' : 'pointer' }}
       className="kanban-card"
       {...attributes}
       {...listeners}
+      onClick={() => onEdit(task)}
     >
       {/* 상단: 상태 아이콘 + 우선순위 */}
       <div className="kanban-card-header">
@@ -112,15 +113,6 @@ export default function DesignTaskCard({ task, onEdit, onDelete }: Props) {
             onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
           >
             {expanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
-          </button>
-
-          {/* 수정 */}
-          <button
-            className="btn-icon"
-            title="수정"
-            onClick={(e) => { e.stopPropagation(); onEdit(task); }}
-          >
-            <Pencil size={11} />
           </button>
 
           {/* 삭제 */}

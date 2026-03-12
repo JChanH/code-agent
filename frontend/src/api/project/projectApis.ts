@@ -97,6 +97,11 @@ export async function deleteTask(taskId: string): Promise<void> {
   await client.delete(`/api/tasks/${taskId}`);
 }
 
+/** 개발 에이전트 실행 (confirmed → coding → reviewing → done) */
+export async function runAgent(taskId: string): Promise<void> {
+  await client.post(`/api/agent/run/${taskId}`);
+}
+
 // ── Specs ─────────────────────────────────────────────────────────────────────
 
 /** 프로젝트의 전체 Spec 목록 조회 */
