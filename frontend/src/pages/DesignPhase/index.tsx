@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { Upload, FileText, Image, Plus, X, CheckCircle, Loader, AlertCircle } from 'lucide-react';
 import KanbanBoard from '../../components/kanban/KanbanBoard';
 import { useTaskStore } from '../../stores';
-import { useWebSocket } from '../../hooks/useWebSocket';
 import {
   getSpecs,
   getTasks,
@@ -179,8 +178,6 @@ export default function DesignPhase({ projectId }: Props) {
   const [showTextModal, setShowTextModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
-
-  useWebSocket(projectId);
 
   useEffect(() => {
     Promise.all([

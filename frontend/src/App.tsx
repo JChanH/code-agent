@@ -2,6 +2,7 @@ import { useEffect, useState, lazy, Suspense } from 'react';
 import { Bell, Settings, Code2 } from 'lucide-react';
 import Sidebar from './components/common/Sidebar';
 import { useAppStore, CURRENT_USER_ID } from './stores';
+import { useWebSocket } from './hooks/useWebSocket';
 import { MOCK_LOGS } from './mock/data';
 import { getProjects } from './api/project/projectApis';
 import './App.css';
@@ -97,6 +98,7 @@ function BottomPanel() {
 
 function MainContent() {
   const { selectedProjectId, activeTab } = useAppStore();
+  useWebSocket(selectedProjectId);
 
   if (!selectedProjectId) {
     return (

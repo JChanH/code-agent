@@ -53,10 +53,6 @@ export class WebSocketClient {
         this.reconnectTimer = setTimeout(() => this._open(), 3000);
       }
     };
-
-    this.ws.onerror = () => {
-      this.ws?.close();
-    };
   }
 }
 

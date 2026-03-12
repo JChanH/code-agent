@@ -15,5 +15,5 @@ export function useWebSocket(projectId: string | null) {
       unsubscribe();
       wsClient.disconnect();
     };
-  }, [projectId, handleWsMessage]);
+  }, [projectId]);
 }
