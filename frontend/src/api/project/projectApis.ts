@@ -114,6 +114,25 @@ export async function runAgent(taskId: string): Promise<void> {
   await client.post(`/api/agent/run/${taskId}`);
 }
 
+/** Done Task의 git 변경사항 조회 (commit diff + 파일 목록) */
+export async function getTaskChanges(taskId: string): Promise<{
+  commit_hash: string | null;
+  diff: string | null;
+  files: { status: string; path: string }[];
+}> {
+  const response = await client.get<ApiResponse<{
+    commit_hash: string | null;
+    diff: string | null;
+    files: { status: string; path: string }[];
+  }>>(`/api/tasks/${taskId}/changes`);
+  return response.data.data!;
+}
+
+/** Done Task의 변경사항 롤백 (git revert + 상태를 confirmed로 복원) */
+export async function rollbackTask(taskId: string): Promise<void> {
+  await client.post(`/api/tasks/${taskId}/rollback`);
+}
+
 // ── Specs ─────────────────────────────────────────────────────────────────────
 
 /** 프로젝트의 전체 Spec 목록 조회 */

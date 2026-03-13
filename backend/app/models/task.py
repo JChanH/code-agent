@@ -94,38 +94,4 @@ class Task(Base):
     project: Mapped["Project"] = relationship("Project", back_populates="tasks")
     spec: Mapped[Optional["Spec"]] = relationship("Spec", back_populates="tasks")
     assigned_user: Mapped[Optional["User"]] = relationship("User", back_populates="assigned_tasks")
-    steps: Mapped[list["TaskStep"]] = relationship(
-        "TaskStep",
-        back_populates="task",
-        cascade="all, delete-orphan",
-    )
 
-
-class TaskStep(Base):
-    __tablename__ = "task_steps"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
-    task_id: Mapped[str] = mapped_column(
-        String(36),
-        ForeignKey("tasks.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    step_type: Mapped[str] = mapped_column(
-        Enum("plan", "plan_review", "code", "review", name="step_type_enum"),
-        nullable=False,
-    )
-    status: Mapped[str] = mapped_column(
-        Enum("pending", "in_progress", "completed", "rejected", "skipped", name="step_status_enum"),
-        default="pending",
-    )
-    content: Mapped[Optional[str]] = mapped_column(Text)
-    agent_messages: Mapped[Optional[Any]] = mapped_column(JSON)
-    session_id: Mapped[Optional[str]] = mapped_column(String(255))
-    started_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP)
-    completed_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP)
-    created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP,
-        server_default=func.current_timestamp(),
-    )
-
-    task: Mapped["Task"] = relationship("Task", back_populates="steps")

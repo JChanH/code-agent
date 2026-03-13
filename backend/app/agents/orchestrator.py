@@ -20,6 +20,7 @@ from app.agents.review_agent import run_review_agent, ReviewResult
 from app.config import get_settings
 from app.repositories import task_repository, project_repository
 from app.utils.db_handler_sqlalchemy import db_conn
+from app.utils.git import GitService
 from app.websocket import ws_manager
 
 logger = logging.getLogger(__name__)
@@ -131,9 +132,27 @@ async def _run_task_inner(task_id: str) -> None:
             "feedback": result.overall_feedback,
         })
 
-        # ── 3. Pass → done ────────────────────────────────────────────────────
+        # ── 3. Pass → auto-commit → done ──────────────────────────────────────
         if result.passed:
-            await _update_task_status(task_id, "done")
+            commit_hash: str | None = None
+            try:
+                git_svc = GitService(project.local_repo_path)
+                git_svc.stage_all()
+                commit_hash = git_svc.commit(f"feat: {task.title}")
+                logger.info("Auto-committed (task=%s, hash=%s)", task_id, commit_hash)
+            except Exception as exc:
+                logger.warning("Auto-commit skipped (task=%s): %s", task_id, exc)
+
+            async with db_conn.transaction() as session:
+                t = await task_repository.find_by_id(task_id, session)
+                if t:
+                    t.status = "done"
+                    from datetime import datetime, timezone
+                    t.completed_at = datetime.now(timezone.utc)
+                    if commit_hash:
+                        t.git_commit_hash = commit_hash
+                    await session.flush()
+
             await broadcast({
                 "type": "task_update",
                 "task_id": task_id,

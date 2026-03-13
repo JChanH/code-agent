@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Code2 } from "lucide-react";
 import KanbanBoard from "../../components/kanban/KanbanBoard";
+import TaskChangesModal from "../../components/kanban/TaskChangesModal";
 import { useTaskStore, useAppStore } from "../../stores";
 import { getTasks, runAgent } from "../../api/project/projectApis";
 import type { Task, TaskStatus } from "../../types";
@@ -20,6 +21,7 @@ export default function DevPhase({ projectId }: Props) {
   const { tasks, setTasks, updateTask } = useTaskStore();
   const { projects } = useAppStore();
   const project = projects.find((p) => p.id === projectId);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   useEffect(() => {
     getTasks(projectId)
@@ -37,6 +39,12 @@ export default function DevPhase({ projectId }: Props) {
       await runAgent(taskId);
     } catch {
       updateTask(taskId, { status: "confirmed" });
+    }
+  }
+
+  function handleCardClick(task: Task) {
+    if (task.status === "done") {
+      setSelectedTask(task);
     }
   }
 
@@ -60,8 +68,19 @@ export default function DevPhase({ projectId }: Props) {
         columns={COLUMNS}
         tasks={devTasks}
         onStatusChange={(id, s) => updateTask(id, { status: s })}
+        onCardClick={handleCardClick}
         onRun={handleRun}
       />
+      {selectedTask && (
+        <TaskChangesModal
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onRollback={(updated) => {
+            updateTask(updated.id, { status: updated.status });
+            setSelectedTask(null);
+          }}
+        />
+      )}
     </div>
   );
 }

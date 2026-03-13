@@ -171,3 +171,28 @@ class GitService:
         """Return the current branch name."""
         result = self._run(["branch", "--show-current"])
         return result.stdout.strip()
+
+    def get_commit_diff(self, commit_hash: str) -> str:
+        """Return the full diff for a specific commit (git show)."""
+        result = self._run(["show", commit_hash, "--patch", "--format="], check=False)
+        return result.stdout
+
+    def get_commit_files(self, commit_hash: str) -> list[dict]:
+        """Return list of files changed in a specific commit."""
+        result = self._run(
+            ["diff-tree", "--no-commit-id", "-r", "--name-status", commit_hash],
+            check=False,
+        )
+        files = []
+        for line in result.stdout.strip().split("\n"):
+            if line.strip():
+                parts = line.split("\t", 1)
+                if len(parts) == 2:
+                    files.append({"status": parts[0].strip(), "path": parts[1].strip()})
+        return files
+
+    def revert_commit(self, commit_hash: str) -> str:
+        """Create a revert commit for the given hash. Returns new commit hash."""
+        self._run(["revert", commit_hash, "--no-edit"])
+        result = self._run(["rev-parse", "HEAD"])
+        return result.stdout.strip()

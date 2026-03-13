@@ -40,3 +40,13 @@ async def update_task(task_id: str, body: TaskUpdate):
 async def delete_task(task_id: str):
     await tasks_service.delete_task(task_id)
     return ApiResponse.ok(None)
+
+
+@tasks_router.get("/{task_id}/changes", response_model=ApiResponse[dict])
+async def get_task_changes(task_id: str):
+    return ApiResponse.ok(await tasks_service.get_task_changes(task_id))
+
+
+@tasks_router.post("/{task_id}/rollback", response_model=ApiResponse[TaskResponse])
+async def rollback_task(task_id: str):
+    return ApiResponse.ok(await tasks_service.rollback_task(task_id))
