@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import datetime, timezone
 
 from app.agents.code_agent import run_code_agent
 from app.agents.review_agent import run_review_agent, ReviewResult
@@ -40,6 +41,11 @@ async def _update_task_status(task_id: str, status: str) -> None:
         task = await task_repository.find_by_id(task_id, session)
         if task:
             task.status = status
+            now = datetime.now(timezone.utc)
+            if status == "coding" and task.started_at is None:
+                task.started_at = now
+            elif status in ("done", "failed"):
+                task.completed_at = now
             await session.flush()
 
 

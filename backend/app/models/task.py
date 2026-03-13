@@ -74,7 +74,10 @@ class Task(Base):
     auto_approve_config: Mapped[Optional[Any]] = mapped_column(JSON)
     
     git_commit_hash: Mapped[Optional[str]] = mapped_column(String(40))
-    
+
+    started_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP)
+
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
         server_default=func.current_timestamp(),
