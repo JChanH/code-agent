@@ -50,7 +50,7 @@ function TaskEditModal({ task, onSave, onClose }: EditModalProps) {
       onClick={onClose}
     >
       <div
-        style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, padding: 20, width: 520, maxHeight: '80vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}
+        style={{ background: '#1a1d27', border: '1px solid #6366f1', borderRadius: 8, padding: 20, width: 520, maxHeight: '80vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, color: '#e2e8f0' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -59,18 +59,18 @@ function TaskEditModal({ task, onSave, onClose }: EditModalProps) {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <label style={{ fontSize: 11, color: 'var(--text-muted)' }}>제목</label>
+          <label style={{ fontSize: 11, color: '#9ca3af' }}>제목</label>
           <input
-            style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 4, padding: '6px 8px', color: 'inherit', fontSize: 13 }}
+            style={{ background: '#22263a', border: '1px solid #3d4270', borderRadius: 4, padding: '6px 8px', color: '#e2e8f0', fontSize: 13 }}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <label style={{ fontSize: 11, color: 'var(--text-muted)' }}>설명</label>
+          <label style={{ fontSize: 11, color: '#9ca3af' }}>설명</label>
           <textarea
-            style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 4, padding: '6px 8px', color: 'inherit', fontSize: 13, resize: 'vertical', minHeight: 100, fontFamily: 'inherit' }}
+            style={{ background: '#22263a', border: '1px solid #3d4270', borderRadius: 4, padding: '6px 8px', color: '#e2e8f0', fontSize: 13, resize: 'vertical', minHeight: 100, fontFamily: 'inherit' }}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
@@ -78,9 +78,9 @@ function TaskEditModal({ task, onSave, onClose }: EditModalProps) {
 
         <div style={{ display: 'flex', gap: 12 }}>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label style={{ fontSize: 11, color: 'var(--text-muted)' }}>우선순위</label>
+            <label style={{ fontSize: 11, color: '#9ca3af' }}>우선순위</label>
             <select
-              style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 4, padding: '6px 8px', color: 'inherit', fontSize: 13 }}
+              style={{ background: '#22263a', border: '1px solid #3d4270', borderRadius: 4, padding: '6px 8px', color: '#e2e8f0', fontSize: 13 }}
               value={priority}
               onChange={(e) => setPriority(e.target.value as TaskPriority)}
             >
@@ -91,9 +91,9 @@ function TaskEditModal({ task, onSave, onClose }: EditModalProps) {
             </select>
           </div>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label style={{ fontSize: 11, color: 'var(--text-muted)' }}>복잡도</label>
+            <label style={{ fontSize: 11, color: '#9ca3af' }}>복잡도</label>
             <select
-              style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 4, padding: '6px 8px', color: 'inherit', fontSize: 13 }}
+              style={{ background: '#22263a', border: '1px solid #3d4270', borderRadius: 4, padding: '6px 8px', color: '#e2e8f0', fontSize: 13 }}
               value={complexity}
               onChange={(e) => setComplexity(e.target.value as TaskComplexity)}
             >
@@ -107,16 +107,16 @@ function TaskEditModal({ task, onSave, onClose }: EditModalProps) {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <label style={{ fontSize: 11, color: 'var(--text-muted)' }}>수용 기준</label>
+          <label style={{ fontSize: 11, color: '#9ca3af' }}>수용 기준</label>
           {criteria.map((c, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ flex: 1, fontSize: 12, color: 'var(--text-secondary)', background: 'var(--bg-primary)', padding: '4px 8px', borderRadius: 4 }}>{c}</span>
+              <span style={{ flex: 1, fontSize: 12, color: '#cbd5e1', background: '#22263a', padding: '4px 8px', borderRadius: 4 }}>{c}</span>
               <button className="btn-icon" onClick={() => setCriteria(criteria.filter((_, idx) => idx !== i))}><X size={11} /></button>
             </div>
           ))}
           <div style={{ display: 'flex', gap: 6 }}>
             <input
-              style={{ flex: 1, background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 4, padding: '5px 8px', color: 'inherit', fontSize: 12 }}
+              style={{ flex: 1, background: '#22263a', border: '1px solid #3d4270', borderRadius: 4, padding: '5px 8px', color: '#e2e8f0', fontSize: 12 }}
               placeholder="기준 추가… (Enter)"
               value={newCriterion}
               onChange={(e) => setNewCriterion(e.target.value)}

@@ -25,6 +25,7 @@ interface AppState {
   addProject: (project: Project) => void;
   selectProject: (id: string | null) => void;
   setActiveTab: (tab: ActiveTab) => void;
+  addGuidemapGenerating: (projectId: string) => void;
   handleWsMessage: (msg: WsMessage) => void;
 }
 
@@ -40,6 +41,12 @@ export const useAppStore = create<AppState>((set) => ({
   addProject: (project) => set((s) => ({ projects: [...s.projects, project] })),
   selectProject: (id) => set({ selectedProjectId: id, activeTab: 'dashboard' }),
   setActiveTab: (tab) => set({ activeTab: tab }),
+  addGuidemapGenerating: (projectId) =>
+    set((s) => {
+      const next = new Set(s.guidemapGeneratingProjectIds);
+      next.add(projectId);
+      return { guidemapGeneratingProjectIds: next };
+    }),
 
   handleWsMessage: (msg) => {
     switch (msg.type) {

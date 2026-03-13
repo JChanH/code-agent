@@ -124,11 +124,7 @@ class TaskStep(Base):
     )
 
     task: Mapped["Task"] = relationship("Task", back_populates="steps")
-    code_changes: Mapped[list["CodeChange"]] = relationship(
-        "CodeChange",
-        back_populates="task_step",
-        cascade="all, delete-orphan",
-    )
+
     reviews: Mapped[list["Review"]] = relationship(
         "Review",
         back_populates="task_step",
@@ -136,32 +132,6 @@ class TaskStep(Base):
     )
 
 
-class CodeChange(Base):
-    __tablename__ = "code_changes"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
-    task_step_id: Mapped[str] = mapped_column(
-        String(36),
-        ForeignKey("task_steps.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    file_path: Mapped[str] = mapped_column(String(500), nullable=False)
-    change_type: Mapped[str] = mapped_column(
-        Enum("create", "modify", "delete", name="change_type_enum"),
-        nullable=False,
-    )
-    diff_content: Mapped[Optional[str]] = mapped_column(Text)
-    before_content: Mapped[Optional[str]] = mapped_column(Text)
-    after_content: Mapped[Optional[str]] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP,
-        server_default=func.current_timestamp(),
-    )
-
-    task_step: Mapped["TaskStep"] = relationship("TaskStep", back_populates="code_changes")
-
-
-class Review(Base):
     __tablename__ = "reviews"
 
     # 아이디

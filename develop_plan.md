@@ -273,20 +273,6 @@ CREATE TABLE task_steps (
     FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
 );
 
--- ============================================
--- 코드 변경사항 추적
--- ============================================
-CREATE TABLE code_changes (
-    id              VARCHAR(36) PRIMARY KEY,
-    task_step_id    VARCHAR(36) NOT NULL,
-    file_path       VARCHAR(500) NOT NULL,
-    change_type     ENUM('create', 'modify', 'delete') NOT NULL,
-    diff_content    LONGTEXT,                       -- unified diff
-    before_content  LONGTEXT,                       -- 변경 전 (롤백용)
-    after_content   LONGTEXT,                       -- 변경 후
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (task_step_id) REFERENCES task_steps(id) ON DELETE CASCADE
-);
 
 -- ============================================
 -- 리뷰 기록
@@ -1198,100 +1184,7 @@ async def create_development_plan(
 ```python
 # backend/app/agents/code_agent.py
 
-class CodeAgent:
-    """
-    Plan을 기반으로 실제 코드를 생성/수정합니다.
-    [v2.0] 사용자 worktree 내에서만 작업하며, 프로젝트 스택 보안 프로파일을 적용합니다.
-    """
-    
-    def __init__(self, task: Task, plan: PlanResult,
-                 project: Project, worktree_path: str):
-        self.task = task
-        self.plan = plan
-        self.project = project
-        self.worktree_path = worktree_path
-        self.code_changes = []
-        
-        # [v2.0] 보안 프로파일 로드
-        security_profile = load_security_profile(project)
-        self.security_hooks = SecurityHookFactory(security_profile, worktree_path)
-    
-    async def track_file_changes(self, input_data, tool_use_id, context):
-        """PostToolUse Hook: 파일 변경을 추적합니다."""
-        tool_name = input_data["tool_name"]
-        if tool_name in ("Write", "Edit"):
-            file_path = input_data["tool_input"].get("file_path", "")
-            self.code_changes.append({
-                "file_path": file_path,
-                "tool_name": tool_name,
-                "tool_input": input_data["tool_input"],
-                "tool_response": input_data.get("tool_response"),
-            })
-            await self.ws_manager.broadcast({
-                "type": "code_change",
-                "task_id": self.task.id,
-                "file_path": file_path,
-                "change_type": "create" if tool_name == "Write" else "modify"
-            })
-        return {}
-    
-    async def execute(self) -> CodeResult:
-        """코드 생성/수정 실행"""
-        
-        # [v2.0] 보안 Hook + 변경 추적 Hook 결합
-        security_hooks = self.security_hooks.get_hooks()
-        combined_hooks = {
-            "PreToolUse": security_hooks.get("PreToolUse", []),
-            "PostToolUse": [
-                HookMatcher(
-                    matcher="Write|Edit",
-                    hooks=[self.track_file_changes]
-                ),
-            ],
-        }
-        
-        options = ClaudeAgentOptions(
-            allowed_tools=["Read", "Write", "Edit", "Bash", "Glob", "Grep"],
-            permission_mode="bypassPermissions",
-            max_turns=100,
-            cwd=self.worktree_path,                # [v2.0] 사용자 worktree
-            enable_file_checkpointing=True,
-            hooks=combined_hooks,
-        )
-        
-        prompt = f"""
-        아래 개발 계획에 따라 코드를 구현하세요.
-        
-        ## Task
-        {self.task.title}: {self.task.description}
-        
-        ## 프로젝트 스택
-        - 언어: {self.project.project_stack}
-        - 프레임워크: {self.project.framework}
-        
-        ## 개발 계획
-        {json.dumps(self.plan.to_dict(), ensure_ascii=False)}
-        
-        ## 수용 조건
-        {json.dumps(self.task.acceptance_criteria, ensure_ascii=False)}
-        
-        ## 규칙
-        1. 계획된 순서대로 파일을 생성/수정하세요
-        2. 각 파일 수정 후 lint/format 검증
-        3. 테스트 코드도 함께 작성
-        4. 기존 코드 스타일을 따르세요
-        """
-        
-        async with ClaudeSDKClient(options=options) as client:
-            await client.query(prompt)
-            async for message in client.receive_response():
-                await self.ws_manager.broadcast({
-                    "type": "agent_message",
-                    "task_id": self.task.id,
-                    "message": serialize_message(message)
-                })
-        
-        return CodeResult(changes=self.code_changes)
+TODO: 다시 작성
 ```
 
 #### 3-5. Review 시스템 구현

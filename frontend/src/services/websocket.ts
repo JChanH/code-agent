@@ -37,9 +37,10 @@ export class WebSocketClient {
 
   private _open() {
     const url = `ws://localhost:8000/ws/${this.projectId}`;
-    this.ws = new WebSocket(url);
+    const ws = new WebSocket(url);
+    this.ws = ws;
 
-    this.ws.onmessage = (event) => {
+    ws.onmessage = (event) => {
       try {
         const msg: WsMessage = JSON.parse(event.data);
         this.handlers.forEach(h => h(msg));
@@ -48,7 +49,8 @@ export class WebSocketClient {
       }
     };
 
-    this.ws.onclose = () => {
+    ws.onclose = () => {
+      if (this.ws !== ws) return; // 이미 교체된 stale 커넥션이면 무시
       if (this.shouldReconnect) {
         this.reconnectTimer = setTimeout(() => this._open(), 3000);
       }

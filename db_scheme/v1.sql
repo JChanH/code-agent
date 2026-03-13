@@ -99,20 +99,6 @@ CREATE TABLE task_steps (
     FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
 );
 
--- ============================================
--- 코드 변경사항 추적
--- ============================================
-CREATE TABLE code_changes (
-    id              VARCHAR(36) PRIMARY KEY,
-    task_step_id    VARCHAR(36) NOT NULL,
-    file_path       VARCHAR(500) NOT NULL,
-    change_type     ENUM('create', 'modify', 'delete') NOT NULL,
-    diff_content    LONGTEXT,                       -- unified diff
-    before_content  LONGTEXT,                       -- 변경 전 (롤백용)
-    after_content   LONGTEXT,                       -- 변경 후
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (task_step_id) REFERENCES task_steps(id) ON DELETE CASCADE
-);
 
 -- ============================================
 -- 리뷰 기록

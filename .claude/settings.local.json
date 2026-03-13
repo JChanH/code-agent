@@ -26,7 +26,8 @@
       "Bash(find /c/workspace/auto_code_demo/agent_practice/code-agent/frontend/src -type f \\\\\\(-name *.tsx -o -name *.ts -o -name *.jsx -o -name *.js \\\\\\))",
       "Bash(xargs -I {} basename {})",
       "Bash(find c:workspaceauto_code_demoagent_practicecode-agentbackend -path */agents/security* -type f)",
-      "Bash(find c:workspaceauto_code_demoagent_practicecode-agentbackend -name *security* -type f)"
+      "Bash(find c:workspaceauto_code_demoagent_practicecode-agentbackend -name *security* -type f)",
+      "Bash(xargs grep:*)"
     ]
   }
 }

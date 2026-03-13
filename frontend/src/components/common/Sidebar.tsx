@@ -30,7 +30,7 @@ const LOCAL_REPO_HINT: Record<string, string> = {
 };
 
 function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
-  const { addProject } = useAppStore();
+  const { addProject, addGuidemapGenerating } = useAppStore();
   const [form, setForm] = useState<ProjectCreate>(EMPTY_FORM);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -61,6 +61,9 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
     setLoading(false);
     if (result.success && result.data) {
       addProject(result.data);
+      if (form.project_type === "existing") {
+        addGuidemapGenerating(result.data.id);
+      }
       onCreated(result.data.id);
       onClose();
     } else {
