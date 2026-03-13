@@ -125,9 +125,18 @@ class GitService:
 
     def commit(self, message: str) -> str:
         """Commit staged changes. Returns the commit hash."""
-        self._run(["commit", "-m", message])
+        self._run([
+            "-c", "user.email=agent@code-agent.local",
+            "-c", "user.name=Code Agent",
+            "commit", "-m", message,
+        ])
         result = self._run(["rev-parse", "HEAD"])
         return result.stdout.strip()
+
+    def has_staged_changes(self) -> bool:
+        """Return True if there are staged changes ready to commit."""
+        result = self._run(["diff", "--cached", "--quiet"], check=False)
+        return result.returncode != 0
 
     def pull(self, remote: str = "origin", branch: str = "main",
              strategy: str = "rebase") -> str:

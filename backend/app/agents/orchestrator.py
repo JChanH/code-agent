@@ -138,10 +138,13 @@ async def _run_task_inner(task_id: str) -> None:
             try:
                 git_svc = GitService(project.local_repo_path)
                 git_svc.stage_all()
-                commit_hash = git_svc.commit(f"feat: {task.title}")
-                logger.info("Auto-committed (task=%s, hash=%s)", task_id, commit_hash)
+                if git_svc.has_staged_changes():
+                    commit_hash = git_svc.commit(f"feat: {task.title}")
+                    logger.info("Auto-committed (task=%s, hash=%s)", task_id, commit_hash)
+                else:
+                    logger.warning("Auto-commit skipped — no changes staged (task=%s)", task_id)
             except Exception as exc:
-                logger.warning("Auto-commit skipped (task=%s): %s", task_id, exc)
+                logger.warning("Auto-commit failed (task=%s): %s", task_id, exc)
 
             async with db_conn.transaction() as session:
                 t = await task_repository.find_by_id(task_id, session)

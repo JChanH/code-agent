@@ -1,4 +1,4 @@
-"""Review agent — runs pytest and verifies acceptance criteria."""
+"""Review agent — static code review against acceptance criteria (no pytest)."""
 
 from __future__ import annotations
 
@@ -21,11 +21,11 @@ REVIEW_SCHEMA: dict[str, Any] = {
     "properties": {
         "passed": {
             "type": "boolean",
-            "description": "true if all tests pass AND all acceptance criteria are met",
+            "description": "true if all acceptance criteria are satisfied in the code",
         },
         "test_output": {
             "type": "string",
-            "description": "Full pytest output",
+            "description": "Per-criterion verdict (PASS/FAIL) from static code analysis",
         },
         "overall_feedback": {
             "type": "string",
@@ -70,7 +70,7 @@ async def run_review_agent(
     broadcast: Broadcaster | None = None,
 ) -> ReviewResult:
     """
-    Runs pytest and verifies acceptance criteria, returning a ReviewResult.
+    Statically reviews code against acceptance criteria, returning a ReviewResult.
 
     :param task: Task to verify
     :param project: Project info (including local_repo_path)
@@ -79,9 +79,9 @@ async def run_review_agent(
     prompt = _build_prompt(task, project)
 
     options = ClaudeAgentOptions(
-        allowed_tools=["Read", "Write", "Edit", "Glob", "Grep", "Bash"],
+        allowed_tools=["Read", "Glob", "Grep"],
         permission_mode="bypassPermissions",
-        max_turns=15,
+        max_turns=5,
         output_format={"type": "json_schema", "schema": REVIEW_SCHEMA},
     )
 
