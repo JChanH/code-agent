@@ -14,6 +14,7 @@ from app.repositories import spec_repository, project_repository
 from app.websocket import ws_manager
 from app.utils.db_handler_sqlalchemy import db_conn
 from app.agents.prompts import load_prompt, load_text
+from app.agents.guidemap_agent import guidemap_exists, _get_guidemap_path
 
 # 가이드라인 파일 경로 (agents/guidemap/PYTHON_FASTAPI_BACKEND_GUIDELINE.md)
 _GUIDELINE_PATH = Path(__file__).parent / "guidemap" / "PYTHON_FASTAPI_BACKEND_GUIDELINE.md"
@@ -57,6 +58,41 @@ TASK_LIST_SCHEMA: dict[str, Any] = {
                 ],
             },
         },
+        "db_schema": {
+            "type": "object",
+            "description": "DB schema design for new projects only. Omit for existing projects.",
+            "properties": {
+                "overview": {
+                    "type": "string",
+                    "description": "Overall description of the DB schema",
+                },
+                "tables": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string"},
+                            "description": {"type": "string"},
+                            "columns": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "name": {"type": "string"},
+                                        "type": {"type": "string"},
+                                        "nullable": {"type": "boolean"},
+                                        "description": {"type": "string"},
+                                    },
+                                    "required": ["name", "type", "nullable"],
+                                },
+                            },
+                        },
+                        "required": ["name", "columns"],
+                    },
+                },
+            },
+            "required": ["overview", "tables"],
+        },
     },
     "required": ["analysis_summary", "tasks"],
 }
@@ -71,6 +107,14 @@ def _get_stack_context(project: Project) -> str:
                 f"- This is a new FastAPI project. Review the key rules summary below,"
                 f" then read `{_GUIDELINE_PATH}` via the Read tool for full details.\n"
                 f"{summary}"
+            )
+        if project.local_repo_path and guidemap_exists(project.local_repo_path):
+            guidemap_path = _get_guidemap_path(project.local_repo_path)
+            return (
+                f"- This is an existing FastAPI project.\n"
+                f"- A pre-generated guidemap is available at `{guidemap_path}`.\n"
+                f"- Read this guidemap FIRST before exploring the codebase directly.\n"
+                f"- Follow the layer structure, naming conventions, and patterns described in the guidemap.\n"
             )
         return (
             "- This is an existing FastAPI project\n"
@@ -90,10 +134,15 @@ def _build_prompt(spec_content: str, project: Project) -> str:
 
     codebase_section = ""
     if project.local_repo_path:
-        codebase_section = load_prompt(
-            "codebase_section.md",
-            local_repo_path=project.local_repo_path,
+        guidemap_ready = (
+            project.project_type == "existing"
+            and guidemap_exists(project.local_repo_path)
         )
+        if not guidemap_ready:
+            codebase_section = load_prompt(
+                "codebase_section.md",
+                local_repo_path=project.local_repo_path,
+            )
 
     return load_prompt(
         "design_agent.md",
@@ -133,6 +182,30 @@ async def _update_spec_status(spec_id: str, status: str, analysis_result: str | 
             if analysis_result is not None:
                 spec.analysis_result = analysis_result
             await session.flush()
+
+
+def _save_db_schema_file(local_repo_path: str, db_schema: dict) -> Path:
+    """Writes the DB schema to {local_repo_path}/docs/schema/db_schema.md."""
+    schema_dir = Path(local_repo_path) / "docs" / "schema"
+    schema_dir.mkdir(parents=True, exist_ok=True)
+    schema_file = schema_dir / "db_schema.md"
+
+    lines = ["# DB Schema\n", f"\n{db_schema.get('overview', '')}\n"]
+    for table in db_schema.get("tables", []):
+        lines.append(f"\n## {table['name']}\n")
+        if table.get("description"):
+            lines.append(f"{table['description']}\n")
+        lines.append("\n| Column | Type | Nullable | Description |\n")
+        lines.append("|--------|------|----------|-------------|\n")
+        for col in table.get("columns", []):
+            nullable = "O" if col.get("nullable") else "X"
+            lines.append(
+                f"| {col['name']} | {col['type']} | {nullable} | {col.get('description', '')} |\n"
+            )
+
+    schema_file.write_text("".join(lines), encoding="utf-8")
+    logger.info("DB schema written to %s", schema_file)
+    return schema_file
 
 
 async def _save_tasks(project_id: str, spec_id: str, task_items: list[dict]) -> list[Task]:
@@ -227,7 +300,12 @@ async def analyze_spec_and_create_tasks(spec_id: str) -> None:
         task_items: list[dict] = (parsed or {}).get("tasks", [])
         analysis_summary: str = (parsed or {}).get("analysis_summary", "")
 
-        # 4. Save Tasks to DB
+        # 4a. Save DB schema file for new projects
+        db_schema = (parsed or {}).get("db_schema")
+        if project.project_type == "new" and db_schema and project.local_repo_path:
+            _save_db_schema_file(project.local_repo_path, db_schema)
+
+        # 4b. Save Tasks to DB
         saved_tasks = await _save_tasks(project_id, spec_id, task_items)
 
         # 5. Set Spec status → analyzed

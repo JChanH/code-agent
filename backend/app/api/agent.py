@@ -4,8 +4,9 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from app.agents.design_agent import analyze_spec_and_create_tasks
 from app.agents.orchestrator import run_task
-from app.repositories import spec_repository, task_repository
+from app.repositories import spec_repository, task_repository, project_repository
 from app.schemas.common import ApiResponse
+from app.services.guidemap_service import trigger_guidemap_generation
 
 agent_router = APIRouter(prefix="/agent", tags=["agent"])
 
@@ -54,3 +55,26 @@ async def analyze_spec(spec_id: str, background_tasks: BackgroundTasks):
     return ApiResponse.ok(
         {"spec_id": spec_id, "status": "analyzing", "message": "분석이 시작되었습니다. WebSocket으로 진행상황을 확인하세요."}
     )
+
+
+@agent_router.post("/projects/{project_id}/generate-guidemap", response_model=ApiResponse[dict])
+async def generate_guidemap(project_id: str, background_tasks: BackgroundTasks):
+    """
+    기존 프로젝트의 guidemap을 생성(또는 재생성)합니다.
+
+    - existing 타입 프로젝트에만 적용됩니다.
+    - 진행상황은 WebSocket(/ws/{project_id})으로 실시간 전송됩니다.
+    """
+    project = await project_repository.find_by_id(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    if project.project_type != "existing":
+        raise HTTPException(status_code=400, detail="existing 타입 프로젝트에만 적용 가능합니다.")
+
+    background_tasks.add_task(trigger_guidemap_generation, project_id)
+
+    return ApiResponse.ok({
+        "project_id": project_id,
+        "status": "generating",
+        "message": "Guidemap 생성이 시작되었습니다. WebSocket으로 진행상황을 확인하세요.",
+    })

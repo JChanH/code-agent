@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FolderOpen, GitBranch, Layers, Settings, Plus, Code2, Terminal, X, FolderSearch } from "lucide-react";
+import { FolderOpen, GitBranch, Layers, Settings, Plus, Code2, Terminal, X, FolderSearch, Loader2 } from "lucide-react";
 import { useAppStore } from "../../stores";
 import { createProject } from "../../api/project/projectApis";
 import type { ProjectCreate, ProjectType } from "../../api/project/projectTypes";
@@ -144,7 +144,7 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
 }
 
 export default function Sidebar() {
-  const { projects, selectedProjectId, activeTab, selectProject, setActiveTab } = useAppStore();
+  const { projects, selectedProjectId, activeTab, selectProject, setActiveTab, guidemapGeneratingProjectIds } = useAppStore();
   const [showModal, setShowModal] = useState(false);
 
   function handleTabClick(tabId: ActiveTab) {
@@ -160,12 +160,19 @@ export default function Sidebar() {
           <button onClick={() => setShowModal(true)} title="새 프로젝트"><Plus size={13} /></button>
         </div>
         <ul className="sidebar-list">
-          {projects.map((p) => (
-            <li key={p.id} className={"sidebar-item " + (p.id === selectedProjectId ? "active" : "")} onClick={() => selectProject(p.id)}>
-              <FolderOpen size={14} style={{ flexShrink: 0 }} />
-              <span>{p.name}</span>
-            </li>
-          ))}
+          {projects.map((p) => {
+            const isGenerating = guidemapGeneratingProjectIds.has(p.id);
+            return (
+              <li key={p.id} className={"sidebar-item " + (p.id === selectedProjectId ? "active" : "")} onClick={() => selectProject(p.id)}>
+                {isGenerating
+                  ? <Loader2 size={14} style={{ flexShrink: 0 }} className="animate-spin" />
+                  : <FolderOpen size={14} style={{ flexShrink: 0 }} />
+                }
+                <span>{p.name}</span>
+                {isGenerating && <span style={{ fontSize: 11, opacity: 0.6, marginLeft: "auto" }}>가이드맵 생성 중</span>}
+              </li>
+            );
+          })}
         </ul>
       </div>
       <div className="sidebar-section">

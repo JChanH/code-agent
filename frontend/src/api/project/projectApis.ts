@@ -65,6 +65,18 @@ export async function removeProject(id: string): Promise<ApiResponse<null>> {
   }
 }
 
+/** 기존 프로젝트의 guidemap 생성(또는 재생성) 요청 */
+export async function generateGuidemap(projectId: string): Promise<ApiResponse<{ status: string }>> {
+  try {
+    const response = await client.post<ApiResponse<{ status: string }>>(
+      `/api/agent/projects/${projectId}/generate-guidemap`
+    );
+    return response.data;
+  } catch (error) {
+    return extractErrorResponse<{ status: string }>(error);
+  }
+}
+
 // ── Tasks ─────────────────────────────────────────────────────────────────────
 
 /** 프로젝트의 전체 Task 목록 조회 */

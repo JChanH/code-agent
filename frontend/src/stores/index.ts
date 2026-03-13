@@ -19,11 +19,13 @@ interface AppState {
   projects: Project[];
   selectedProjectId: string | null;
   activeTab: ActiveTab;
+  guidemapGeneratingProjectIds: Set<string>;
 
   setProjects: (projects: Project[]) => void;
   addProject: (project: Project) => void;
   selectProject: (id: string | null) => void;
   setActiveTab: (tab: ActiveTab) => void;
+  handleWsMessage: (msg: WsMessage) => void;
 }
 
 // 전역에서 관리하는 상태값(싱글톤 -> 외부 컴포넌트에서든 같은 인스턴스를 유지한다)
@@ -32,11 +34,36 @@ export const useAppStore = create<AppState>((set) => ({
   projects: [], // 전체 프로젝트 목록
   selectedProjectId: null, // 현재 선택된 프로젝트 ID
   activeTab: 'design', // 현재 활성된 탭
+  guidemapGeneratingProjectIds: new Set(),
 
   setProjects: (projects) => set({ projects }),
   addProject: (project) => set((s) => ({ projects: [...s.projects, project] })),
   selectProject: (id) => set({ selectedProjectId: id, activeTab: 'dashboard' }),
   setActiveTab: (tab) => set({ activeTab: tab }),
+
+  handleWsMessage: (msg) => {
+    switch (msg.type) {
+      case 'guidemap_generating': {
+        const data = msg as unknown as { project_id: string };
+        set((s) => {
+          const next = new Set(s.guidemapGeneratingProjectIds);
+          next.add(data.project_id);
+          return { guidemapGeneratingProjectIds: next };
+        });
+        break;
+      }
+      case 'guidemap_generated':
+      case 'guidemap_failed': {
+        const data = msg as unknown as { project_id: string };
+        set((s) => {
+          const next = new Set(s.guidemapGeneratingProjectIds);
+          next.delete(data.project_id);
+          return { guidemapGeneratingProjectIds: next };
+        });
+        break;
+      }
+    }
+  },
 }));
 
 // ── Task Store ────────────────────────────────────────────────────────────────

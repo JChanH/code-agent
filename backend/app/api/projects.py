@@ -1,10 +1,11 @@
 """Project API router."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, BackgroundTasks
 
 from app.schemas import ProjectCreate, ProjectResponse, ProjectUpdate
 from app.schemas.common import ApiResponse
 from app.services import projects_service
+from app.services.guidemap_service import trigger_guidemap_generation
 
 projects_router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -26,7 +27,8 @@ async def list_projects(
 
 @projects_router.post("")
 async def create_project(
-    body: ProjectCreate
+    body: ProjectCreate,
+    background_tasks: BackgroundTasks,
 ) -> ApiResponse[ProjectResponse]:
     """
     새로운 프로젝트를 생성합니다.
@@ -37,7 +39,10 @@ async def create_project(
     Returns:
         ApiResponse[ProjectResponse]: 생성된 프로젝트 정보를 담은 공통 응답 객체
     """
-    return ApiResponse.ok(await projects_service.create_project(body))
+    project = await projects_service.create_project(body)
+    if body.project_type == "existing" and body.local_repo_path:
+        background_tasks.add_task(trigger_guidemap_generation, project.id)
+    return ApiResponse.ok(project)
 
 
 @projects_router.get("/{project_id}")

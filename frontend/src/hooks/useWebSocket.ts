@@ -1,18 +1,21 @@
 import { useEffect } from 'react';
 import { wsClient } from '../services/websocket';
-import { useTaskStore } from '../stores';
+import { useTaskStore, useAppStore } from '../stores';
 
 export function useWebSocket(projectId: string | null) {
-  const handleWsMessage = useTaskStore((s) => s.handleWsMessage);
+  const handleTaskWsMessage = useTaskStore((s) => s.handleWsMessage);
+  const handleAppWsMessage = useAppStore((s) => s.handleWsMessage);
 
   useEffect(() => {
     if (!projectId) return;
 
     wsClient.connect(projectId);
-    const unsubscribe = wsClient.onMessage(handleWsMessage);
+    const unsub1 = wsClient.onMessage(handleTaskWsMessage);
+    const unsub2 = wsClient.onMessage(handleAppWsMessage);
 
     return () => {
-      unsubscribe();
+      unsub1();
+      unsub2();
       wsClient.disconnect();
     };
   }, [projectId]);

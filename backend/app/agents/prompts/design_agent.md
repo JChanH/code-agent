@@ -21,3 +21,10 @@ $spec_content
 3. Analyze the existing codebase structure before designing Tasks
 4. Follow framework conventions ($framework)
 5. Return the result in JSON format only
+6. **New projects only**: Design the DB schema and include it in the `db_schema` field
+   - Identify all entities from the spec and define a table for each
+   - Every table must include `id`, `created_at`, `updated_at` columns
+   - Choose appropriate SQL types (e.g., VARCHAR(36) for UUID, TEXT for long strings, BOOLEAN, TIMESTAMP)
+   - Set nullable=false for required fields, nullable=true for optional fields
+   - Write a brief `description` for each table and column
+   - For existing projects, omit the `db_schema` field entirely
