@@ -67,8 +67,6 @@ class Task(Base):
         default="plan_reviewing",
     )
     
-    dependencies: Mapped[Optional[Any]] = mapped_column(JSON)
-    
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     
     auto_approve: Mapped[bool] = mapped_column(Boolean, default=False)

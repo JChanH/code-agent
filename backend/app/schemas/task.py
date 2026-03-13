@@ -17,7 +17,6 @@ class TaskCreate(BaseModel):
     acceptance_criteria: Optional[list[str]] = None
     priority: TaskPriority = TaskPriority.medium
     complexity: TaskComplexity = TaskComplexity.medium
-    dependencies: Optional[list[str]] = None
     auto_approve: bool = False
     auto_approve_config: Optional[dict] = None
 
@@ -30,7 +29,6 @@ class TaskUpdate(BaseModel):
     priority: Optional[TaskPriority] = None
     complexity: Optional[TaskComplexity] = None
     status: Optional[TaskStatus] = None
-    dependencies: Optional[list[str]] = None
     sort_order: Optional[int] = None
     auto_approve: Optional[bool] = None
     auto_approve_config: Optional[dict] = None
@@ -47,7 +45,6 @@ class TaskResponse(BaseModel):
     priority: TaskPriority
     complexity: TaskComplexity
     status: TaskStatus
-    dependencies: Optional[list[str]]
     sort_order: int
     auto_approve: bool
     auto_approve_config: Optional[dict]

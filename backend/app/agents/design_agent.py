@@ -47,11 +47,6 @@ TASK_LIST_SCHEMA: dict[str, Any] = {
                         "type": "string",
                         "enum": ["trivial", "low", "medium", "high", "very_high"],
                     },
-                    "dependencies": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "의존하는 다른 Task의 title 목록",
-                    },
                 },
                 "required": [
                     "title",
@@ -159,7 +154,6 @@ async def _save_tasks(project_id: str, spec_id: str, task_items: list[dict]) -> 
                 acceptance_criteria=item.get("acceptance_criteria"),
                 priority=item.get("priority", "medium"),
                 complexity=item.get("complexity", "medium"),
-                dependencies=None,  # 제목 기반 의존성은 저장 후 별도 매핑 필요
                 status="plan_reviewing",
                 sort_order=idx,
             )
