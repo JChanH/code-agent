@@ -8,6 +8,7 @@ from typing import Callable, Awaitable
 from claude_agent_sdk import query, ClaudeAgentOptions
 
 from app.models import Task, Project
+from app.agents.prompts import load_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -23,42 +24,23 @@ def _build_prompt(task: Task, project: Project, review_context: dict | None = No
     retry_section = ""
     if review_context:
         attempt = review_context.get("attempt", 1)
-        retry_section = f"""
-            ## ⚠️ 이전 리뷰 실패 결과 (시도 {attempt}회차) — 반드시 수정하세요
+        retry_section = (
+            f"\n## ⚠️ 이전 리뷰 실패 결과 (시도 {attempt}회차) — 반드시 수정하세요\n\n"
+            f"### 테스트 실행 결과\n{review_context.get('test_output', '없음')}\n\n"
+            f"### 수용 기준 검토\n{review_context.get('overall_feedback', '없음')}\n"
+        )
 
-            ### 테스트 실행 결과
-            {review_context.get("test_output", "없음")}
-
-            ### 수용 기준 검토
-            {review_context.get("overall_feedback", "없음")}
-        """
-
-    return f"""당신은 시니어 소프트웨어 엔지니어입니다.
-    아래 Task를 구현하고 pytest 테스트를 작성하세요.
-
-    ## Task 정보
-    - 제목: {task.title}
-    - 설명: {task.description}
-    {criteria_text}
-    ## 프로젝트 컨텍스트
-    - 이름: {project.name}
-    - 스택: {project.project_stack} / {project.framework or "미지정"}
-    - 로컬 경로: {project.local_repo_path}
-    {retry_section}
-    ## 작업 순서
-    1. Glob, Read로 `{project.local_repo_path}` 의 기존 코드 구조 파악
-    2. 기존 패턴·네이밍 규칙에 맞춰 구현 코드 작성
-    3. `{project.local_repo_path}/tests/` 에 pytest 테스트 파일 작성
-    - FastAPI 프로젝트라면 TestClient 사용
-    - 각 수용 기준을 검증하는 테스트 케이스 포함
-    4. Bash로 pytest 실행하여 모든 테스트 통과 확인
-    예: `cd {project.local_repo_path} && python -m pytest tests/ -v --tb=short`
-
-    ## 규칙
-    - 기존 코드 스타일과 패턴을 따를 것
-    - 모든 pytest 테스트가 통과해야 작업 완료
-    - 테스트 파일명: `test_<구현파일명>.py`
-    """
+    return load_prompt(
+        "code_agent.md",
+        task_title=task.title,
+        task_description=task.description,
+        criteria_text=criteria_text,
+        project_name=project.name,
+        project_stack=project.project_stack,
+        framework=project.framework or "미지정",
+        local_repo_path=project.local_repo_path,
+        retry_section=retry_section,
+    )
 
 
 async def run_code_agent(

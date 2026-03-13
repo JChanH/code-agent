@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 from typing import Any
 
 from claude_agent_sdk import query, ClaudeAgentOptions
@@ -12,6 +13,10 @@ from app.models import Spec, Project, Task
 from app.repositories import spec_repository, project_repository
 from app.websocket import ws_manager
 from app.utils.db_handler_sqlalchemy import db_conn
+from app.agents.prompts import load_prompt, load_text
+
+# 가이드라인 파일 경로 (agents/guidemap/PYTHON_FASTAPI_BACKEND_GUIDELINE.md)
+_GUIDELINE_PATH = Path(__file__).parent / "guidemap" / "PYTHON_FASTAPI_BACKEND_GUIDELINE.md"
 
 logger = logging.getLogger(__name__)
 
@@ -65,11 +70,17 @@ TASK_LIST_SCHEMA: dict[str, Any] = {
 def _get_stack_context(project: Project) -> str:
     """프로젝트 스택에 맞는 추가 컨텍스트를 반환합니다."""
     if project.project_stack == "python" and project.framework == "fastapi":
+        if project.project_type == "new":
+            summary = load_text("fastapi_new_project.md")
+            return (
+                f"- 신규 FastAPI 프로젝트입니다. 아래 핵심 규칙 요약을 먼저 확인하고,"
+                f" 상세 내용은 반드시 Read 툴로 `{_GUIDELINE_PATH}` 파일을 읽어 따르세요.\n"
+                f"{summary}"
+            )
         return (
-            "- FastAPI 프로젝트 구조를 따릅니다\n"
-            "- 라우터는 app/api/ 하위에 배치\n"
-            "- 모델은 app/models/, 스키마는 app/schemas/\n"
-            "- 비즈니스 로직은 app/services/\n"
+            "- 기존 FastAPI 프로젝트입니다. 코드베이스를 탐색하여 기존 패턴을 따르세요\n"
+            "- 기존 레이어 구조(router → service → repository)를 유지\n"
+            "- 기존 응답 포맷과 예외 처리 방식을 그대로 사용\n"
         )
     if project.project_stack == "java":
         return (
@@ -85,36 +96,26 @@ def _build_prompt(spec_content: str, project: Project) -> str:
 
     codebase_section = ""
     if project.local_repo_path:
-        codebase_section = f"""
-            ## 코드베이스 탐색 (필수)
-            로컬 경로: `{project.local_repo_path}`
-            Task 설계 전에 반드시 아래 절차를 따르세요:
-            1. Glob 툴로 전체 파일 구조 파악 (예: `{project.local_repo_path}/**/*.py`)
-            2. 핵심 파일(모델, 라우터, 서비스 등) Read로 확인
-            3. 기존 패턴/네이밍 규칙을 Task 설계에 반영
-            4. 이미 구현된 기능은 Task에서 제외하거나 수정 Task로만 포함
-        """
+        codebase_section = (
+            f"## 코드베이스 탐색 (필수)\n"
+            f"로컬 경로: `{project.local_repo_path}`\n"
+            f"Task 설계 전에 반드시 아래 절차를 따르세요:\n"
+            f"1. Glob 툴로 전체 파일 구조 파악 (예: `{project.local_repo_path}/**/*.py`)\n"
+            f"2. 핵심 파일(모델, 라우터, 서비스 등) Read로 확인\n"
+            f"3. 기존 패턴/네이밍 규칙을 Task 설계에 반영\n"
+            f"4. 이미 구현된 기능은 Task에서 제외하거나 수정 Task로만 포함\n"
+        )
 
-    return f"""당신은 소프트웨어 설계 전문가입니다.
-        아래 스펙 문서를 분석하여 개발 Task 목록으로 분해해주세요.
-
-        ## 프로젝트 컨텍스트
-        - 이름: {project.name}
-        - 스택: {project.project_stack} / {project.framework or "미지정"}
-        - 저장소: {project.repo_url or "미설정"}
-        {stack_context}
-        {codebase_section}
-        ## Spec 내용
-        {spec_content}
-
-        ## 규칙
-        1. 각 Task는 1-4시간 내 완료 가능한 단위로 분해
-        2. Task 간 의존성을 명확히 기술
-        3. acceptance_criteria는 검증 가능한 구체적 조건으로 작성
-        4. 기존 코드베이스 구조를 먼저 파악한 후 Task 설계
-        5. 프레임워크 규칙({project.framework or "해당없음"})을 따를 것
-        6. 결과는 반드시 JSON 형식으로만 반환
-    """
+    return load_prompt(
+        "design_agent.md",
+        project_name=project.name,
+        project_stack=project.project_stack,
+        framework=project.framework or "미지정",
+        repo_url=project.repo_url or "미설정",
+        stack_context=stack_context,
+        codebase_section=codebase_section,
+        spec_content=spec_content,
+    )
 
 
 async def _load_spec_content(spec: Spec) -> str:

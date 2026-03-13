@@ -11,10 +11,12 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from app.agents.code_agent import run_code_agent
 from app.agents.review_agent import run_review_agent, ReviewResult
+from app.config import get_settings
 from app.repositories import task_repository, project_repository
 from app.utils.db_handler_sqlalchemy import db_conn
 from app.websocket import ws_manager
@@ -22,6 +24,15 @@ from app.websocket import ws_manager
 logger = logging.getLogger(__name__)
 
 MAX_RETRIES = 3
+
+_semaphore: asyncio.Semaphore | None = None
+
+
+def get_semaphore() -> asyncio.Semaphore:
+    global _semaphore
+    if _semaphore is None:
+        _semaphore = asyncio.Semaphore(get_settings().max_concurrent_tasks)
+    return _semaphore
 
 
 async def _update_task_status(task_id: str, status: str) -> None:
@@ -38,6 +49,11 @@ async def run_task(task_id: str) -> None:
 
     :param task_id: 실행할 Task ID (status == 'confirmed' 이어야 함)
     """
+    async with get_semaphore():
+        await _run_task_inner(task_id)
+
+
+async def _run_task_inner(task_id: str) -> None:
     task = await task_repository.find_by_id(task_id)
     if not task:
         logger.error("Task not found: %s", task_id)
