@@ -1,4 +1,4 @@
-"""리뷰 에이전트 — pytest 실행 및 수용 기준을 검증합니다."""
+"""Review agent — runs pytest and verifies acceptance criteria."""
 
 from __future__ import annotations
 
@@ -21,11 +21,11 @@ REVIEW_SCHEMA: dict[str, Any] = {
     "properties": {
         "passed": {
             "type": "boolean",
-            "description": "테스트 전체 통과 AND 수용 기준 모두 충족 시 true",
+            "description": "true if all tests pass AND all acceptance criteria are met",
         },
         "test_output": {
             "type": "string",
-            "description": "pytest 실행 결과 전체 출력",
+            "description": "Full pytest output",
         },
         "criteria_results": {
             "type": "array",
@@ -41,7 +41,7 @@ REVIEW_SCHEMA: dict[str, Any] = {
         },
         "overall_feedback": {
             "type": "string",
-            "description": "재시도 시 code_agent에 전달할 구체적인 수정 방향",
+            "description": "Specific fix directions to pass to code_agent on retry",
         },
     },
     "required": ["passed", "test_output", "criteria_results", "overall_feedback"],
@@ -59,7 +59,7 @@ def _build_prompt(task: Task, project: Project) -> str:
     criteria_text = ""
     if task.acceptance_criteria:
         criteria_list = "\n".join(f"  - {c}" for c in task.acceptance_criteria)
-        criteria_text = f"\n## 수용 기준\n{criteria_list}\n"
+        criteria_text = f"\n## Acceptance Criteria\n{criteria_list}\n"
 
     return load_prompt(
         "review_agent.md",
@@ -76,11 +76,11 @@ async def run_review_agent(
     broadcast: Broadcaster | None = None,
 ) -> ReviewResult:
     """
-    pytest 실행 및 수용 기준을 검증하여 ReviewResult를 반환합니다.
+    Runs pytest and verifies acceptance criteria, returning a ReviewResult.
 
-    :param task: 검증할 Task
-    :param project: 프로젝트 정보 (local_repo_path 포함)
-    :param broadcast: WebSocket 브로드캐스트 콜백
+    :param task: Task to verify
+    :param project: Project info (including local_repo_path)
+    :param broadcast: WebSocket broadcast callback
     """
     prompt = _build_prompt(task, project)
 
@@ -115,11 +115,11 @@ async def run_review_agent(
                 pass
 
     if not parsed:
-        logger.error("review_agent 결과 없음 (task_id=%s)", task.id)
+        logger.error("review_agent returned no result (task_id=%s)", task.id)
         return ReviewResult(
             passed=False,
-            test_output="리뷰 에이전트가 결과를 반환하지 않았습니다.",
-            overall_feedback="에이전트 실행 결과가 없습니다. 재시도하세요.",
+            test_output="Review agent returned no result.",
+            overall_feedback="No agent result. Please retry.",
         )
 
     return ReviewResult(

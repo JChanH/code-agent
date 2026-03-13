@@ -1,12 +1,12 @@
-"""개발 오케스트레이터 — code_agent → review_agent 흐름을 관리합니다.
+"""Development orchestrator — manages the code_agent → review_agent flow.
 
-흐름:
+Flow:
   confirmed
     → (code_agent) → coding
     → (review_agent) → reviewing
-    → 통과: done
-    → 실패: 최대 MAX_RETRIES회까지 code_agent 재시도 (이전 리뷰 결과 컨텍스트 주입)
-    → 초과: failed
+    → pass: done
+    → fail: retry code_agent up to MAX_RETRIES times (with previous review context injected)
+    → exceeded: failed
 """
 
 from __future__ import annotations
@@ -45,9 +45,9 @@ async def _update_task_status(task_id: str, status: str) -> None:
 
 async def run_task(task_id: str) -> None:
     """
-    Task 1개의 전체 개발 사이클을 실행합니다.
+    Runs the full development cycle for a single Task.
 
-    :param task_id: 실행할 Task ID (status == 'confirmed' 이어야 함)
+    :param task_id: ID of the Task to run (status must be 'confirmed')
     """
     async with get_semaphore():
         await _run_task_inner(task_id)
@@ -70,9 +70,9 @@ async def _run_task_inner(task_id: str) -> None:
     review_context: dict | None = None
 
     for attempt in range(1, MAX_RETRIES + 1):
-        logger.info("Task 실행 시작 (task=%s, attempt=%d/%d)", task_id, attempt, MAX_RETRIES)
+        logger.info("Task started (task=%s, attempt=%d/%d)", task_id, attempt, MAX_RETRIES)
 
-        # ── 1. 코딩 단계 ──────────────────────────────────────────────────────
+        # ── 1. Coding phase ───────────────────────────────────────────────────
         await _update_task_status(task_id, "coding")
         await broadcast({
             "type": "task_update",
@@ -84,7 +84,7 @@ async def _run_task_inner(task_id: str) -> None:
         try:
             await run_code_agent(task, project, review_context=review_context, broadcast=broadcast)
         except Exception as exc:
-            logger.exception("code_agent 실패 (task=%s, attempt=%d): %s", task_id, attempt, exc)
+            logger.exception("code_agent failed (task=%s, attempt=%d): %s", task_id, attempt, exc)
             await _update_task_status(task_id, "failed")
             await broadcast({
                 "type": "task_update",
@@ -94,7 +94,7 @@ async def _run_task_inner(task_id: str) -> None:
             })
             return
 
-        # ── 2. 리뷰 단계 ──────────────────────────────────────────────────────
+        # ── 2. Review phase ───────────────────────────────────────────────────
         await _update_task_status(task_id, "reviewing")
         await broadcast({
             "type": "task_update",
@@ -106,7 +106,7 @@ async def _run_task_inner(task_id: str) -> None:
         try:
             result: ReviewResult = await run_review_agent(task, project, broadcast=broadcast)
         except Exception as exc:
-            logger.exception("review_agent 실패 (task=%s, attempt=%d): %s", task_id, attempt, exc)
+            logger.exception("review_agent failed (task=%s, attempt=%d): %s", task_id, attempt, exc)
             await _update_task_status(task_id, "failed")
             await broadcast({
                 "type": "task_update",
@@ -125,7 +125,7 @@ async def _run_task_inner(task_id: str) -> None:
             "feedback": result.overall_feedback,
         })
 
-        # ── 3. 통과 → 완료 ────────────────────────────────────────────────────
+        # ── 3. Pass → done ────────────────────────────────────────────────────
         if result.passed:
             await _update_task_status(task_id, "done")
             await broadcast({
@@ -133,12 +133,12 @@ async def _run_task_inner(task_id: str) -> None:
                 "task_id": task_id,
                 "status": "done",
             })
-            logger.info("Task 완료 (task=%s, attempt=%d)", task_id, attempt)
+            logger.info("Task completed (task=%s, attempt=%d)", task_id, attempt)
             return
 
-        # ── 4. 실패 → 다음 시도 컨텍스트 구성 ────────────────────────────────
+        # ── 4. Fail → build context for next attempt ──────────────────────────
         logger.warning(
-            "리뷰 실패, 재시도 예정 (task=%s, attempt=%d/%d)",
+            "Review failed, scheduling retry (task=%s, attempt=%d/%d)",
             task_id, attempt, MAX_RETRIES,
         )
         review_context = {
@@ -147,12 +147,12 @@ async def _run_task_inner(task_id: str) -> None:
             "overall_feedback": result.overall_feedback,
         }
 
-    # ── 5. 최대 재시도 초과 → failed ──────────────────────────────────────────
+    # ── 5. Max retries exceeded → failed ──────────────────────────────────────
     await _update_task_status(task_id, "failed")
     await broadcast({
         "type": "task_update",
         "task_id": task_id,
         "status": "failed",
-        "error": f"최대 재시도 횟수({MAX_RETRIES}회) 초과",
+        "error": f"Max retries exceeded ({MAX_RETRIES})",
     })
-    logger.error("Task 최대 재시도 초과 (task=%s)", task_id)
+    logger.error("Task exceeded max retries (task=%s)", task_id)

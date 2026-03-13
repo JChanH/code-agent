@@ -63,25 +63,24 @@ TASK_LIST_SCHEMA: dict[str, Any] = {
 
 
 def _get_stack_context(project: Project) -> str:
-    """프로젝트 스택에 맞는 추가 컨텍스트를 반환합니다."""
+    """Returns additional context based on the project stack."""
     if project.project_stack == "python" and project.framework == "fastapi":
         if project.project_type == "new":
             summary = load_text("fastapi_new_project.md")
             return (
-                f"- 신규 FastAPI 프로젝트입니다. 아래 핵심 규칙 요약을 먼저 확인하고,"
-                f" 상세 내용은 반드시 Read 툴로 `{_GUIDELINE_PATH}` 파일을 읽어 따르세요.\n"
+                f"- This is a new FastAPI project. Review the key rules summary below,"
+                f" then read `{_GUIDELINE_PATH}` via the Read tool for full details.\n"
                 f"{summary}"
             )
         return (
-            "- 기존 FastAPI 프로젝트입니다. 코드베이스를 탐색하여 기존 패턴을 따르세요\n"
-            "- 기존 레이어 구조(router → service → repository)를 유지\n"
-            "- 기존 응답 포맷과 예외 처리 방식을 그대로 사용\n"
+            "- This is an existing FastAPI project\n"
+            "- Maintain the existing layer structure (router → service → repository)\n"
+            "- Follow the existing response format and exception handling patterns\n"
         )
     if project.project_stack == "java":
         return (
-            "- 기존 사내 프레임워크 위에서 작업합니다\n"
-            "- 기존 패키지 구조와 명명 규칙을 따르세요\n"
-            "- 먼저 프로젝트 구조를 파악한 후 Task를 설계하세요"
+            "- This project uses an existing internal framework\n"
+            "- Follow the existing package structure and naming conventions\n"
         )
     return ""
 
@@ -91,22 +90,17 @@ def _build_prompt(spec_content: str, project: Project) -> str:
 
     codebase_section = ""
     if project.local_repo_path:
-        codebase_section = (
-            f"## 코드베이스 탐색 (필수)\n"
-            f"로컬 경로: `{project.local_repo_path}`\n"
-            f"Task 설계 전에 반드시 아래 절차를 따르세요:\n"
-            f"1. Glob 툴로 전체 파일 구조 파악 (예: `{project.local_repo_path}/**/*.py`)\n"
-            f"2. 핵심 파일(모델, 라우터, 서비스 등) Read로 확인\n"
-            f"3. 기존 패턴/네이밍 규칙을 Task 설계에 반영\n"
-            f"4. 이미 구현된 기능은 Task에서 제외하거나 수정 Task로만 포함\n"
+        codebase_section = load_prompt(
+            "codebase_section.md",
+            local_repo_path=project.local_repo_path,
         )
 
     return load_prompt(
         "design_agent.md",
         project_name=project.name,
         project_stack=project.project_stack,
-        framework=project.framework or "미지정",
-        repo_url=project.repo_url or "미설정",
+        framework=project.framework or "unspecified",
+        repo_url=project.repo_url or "not configured",
         stack_context=stack_context,
         codebase_section=codebase_section,
         spec_content=spec_content,
@@ -114,24 +108,24 @@ def _build_prompt(spec_content: str, project: Project) -> str:
 
 
 async def _load_spec_content(spec: Spec) -> str:
-    """Spec에서 분석할 텍스트 내용을 추출합니다."""
+    """Extracts text content from a Spec for analysis."""
     if spec.raw_content:
         return spec.raw_content
 
     if spec.source_path:
-        # TODO: 파일에서 텍스트 추출 (PDF/DOCX는 별도 라이브러리 필요, 여기서는 텍스트 파일 처리)
+        # TODO: Extract text from files (PDF/DOCX require separate libraries; text files handled here)
         try:
             with open(spec.source_path, encoding="utf-8", errors="ignore") as f:
                 return f.read()
         except OSError as e:
-            logger.warning("Spec 파일 읽기 실패: %s", e)
-            return f"[파일 읽기 실패: {spec.source_path}]"
+            logger.warning("Failed to read spec file: %s", e)
+            return f"[File read error: {spec.source_path}]"
 
-    return "[Spec 내용 없음]"
+    return "[No spec content]"
 
 
 async def _update_spec_status(spec_id: str, status: str, analysis_result: str | None = None) -> None:
-    """Spec 상태와 분석 결과를 업데이트합니다."""
+    """Updates the spec status and analysis result."""
     async with db_conn.transaction() as session:
         spec = await spec_repository.find_by_id(spec_id, session)
         if spec:
@@ -142,7 +136,7 @@ async def _update_spec_status(spec_id: str, status: str, analysis_result: str | 
 
 
 async def _save_tasks(project_id: str, spec_id: str, task_items: list[dict]) -> list[Task]:
-    """분해된 Task 목록을 DB에 저장합니다."""
+    """Saves the decomposed Task list to the database."""
     saved: list[Task] = []
     async with db_conn.transaction() as session:
         for idx, item in enumerate(task_items):
@@ -166,14 +160,14 @@ async def _save_tasks(project_id: str, spec_id: str, task_items: list[dict]) -> 
 
 async def analyze_spec_and_create_tasks(spec_id: str) -> None:
     """
-    Spec을 분석하여 Task 목록을 자동 생성합니다.
+    Analyzes a Spec and auto-generates a Task list.
 
-    1. Spec 로드 → 상태 'analyzing'으로 변경
-    2. Design Agent 실행 (claude-code-sdk query)
-    3. 분석 결과 DB 저장, Spec 상태 'analyzed'로 변경
-    4. 각 단계마다 WebSocket으로 진행상황 브로드캐스트
+    1. Load Spec → set status to 'analyzing'
+    2. Run Design Agent (claude-agent-sdk query)
+    3. Save analysis result to DB, set Spec status to 'analyzed'
+    4. Broadcast progress via WebSocket at each step
     """
-    # 1. Spec / Project 로드
+    # 1. Load Spec / Project
     spec = await spec_repository.find_by_id(spec_id)
     if not spec:
         logger.error("Spec not found: %s", spec_id)
@@ -189,7 +183,7 @@ async def analyze_spec_and_create_tasks(spec_id: str) -> None:
     async def broadcast(msg: dict) -> None:
         await ws_manager.broadcast(project_id, msg)
 
-    # 2. 상태 → analyzing
+    # 2. Set status → analyzing
     await _update_spec_status(spec_id, "analyzing")
     await broadcast({"type": "spec_analyzing", "spec_id": spec_id})
 
@@ -206,9 +200,9 @@ async def analyze_spec_and_create_tasks(spec_id: str) -> None:
 
         parsed: dict | None = None
 
-        print("에이전트 시작")
+        print("Agent started")
         async for message in query(prompt=prompt, options=options):
-            # 에이전트 메시지를 WebSocket으로 전달
+            # Forward agent messages to WebSocket
             try:
                 msg_data = message.model_dump() if hasattr(message, "model_dump") else str(message)
             except Exception:
@@ -216,34 +210,34 @@ async def analyze_spec_and_create_tasks(spec_id: str) -> None:
 
             await broadcast({"type": "agent_message", "spec_id": spec_id, "message": msg_data})
 
-            # ResultMessage에서 structured_output 추출 (output_format=json_schema 사용 시)
+            # Extract structured_output from ResultMessage (when output_format=json_schema)
             if hasattr(message, "structured_output") and message.structured_output is not None:
                 parsed = message.structured_output
-                
-            # fallback: AssistantMessage content에서 텍스트 추출 후 JSON 파싱
+
+            # Fallback: parse JSON from AssistantMessage result text
             elif hasattr(message, "result") and message.result:
                 try:
                     parsed = json.loads(message.result)
                 except (json.JSONDecodeError, TypeError):
                     pass
 
-        # 3. 결과 파싱
+        # 3. Parse result
         if not parsed:
-            raise ValueError("에이전트가 결과를 반환하지 않았습니다.")
+            raise ValueError("Agent returned no result.")
         task_items: list[dict] = (parsed or {}).get("tasks", [])
         analysis_summary: str = (parsed or {}).get("analysis_summary", "")
 
-        # 4. Task DB 저장
+        # 4. Save Tasks to DB
         saved_tasks = await _save_tasks(project_id, spec_id, task_items)
 
-        # 5. Spec 상태 → analyzed (분석 완료)
+        # 5. Set Spec status → analyzed
         await _update_spec_status(
             spec_id,
             "analyzed",
             analysis_result=json.dumps(parsed or {}, ensure_ascii=False),
         )
 
-        # 6. 완료 브로드캐스트
+        # 6. Broadcast completion
         await broadcast(
             {
                 "type": "spec_analyzed",
@@ -266,8 +260,8 @@ async def analyze_spec_and_create_tasks(spec_id: str) -> None:
         )
 
     except Exception as exc:
-        logger.exception("Design Agent 실행 실패 (spec_id=%s): %s", spec_id, exc)
-        await _update_spec_status(spec_id, "uploaded")  # 실패 시 원복
+        logger.exception("Design Agent failed (spec_id=%s): %s", spec_id, exc)
+        await _update_spec_status(spec_id, "uploaded")  # Revert status on failure
         await broadcast(
             {
                 "type": "spec_analyze_failed",

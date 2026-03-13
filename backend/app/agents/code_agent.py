@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Callable, Awaitable
 
 from claude_agent_sdk import query, ClaudeAgentOptions
@@ -14,20 +15,33 @@ logger = logging.getLogger(__name__)
 
 Broadcaster = Callable[[dict], Awaitable[None]]
 
+_GUIDELINE_PATH = Path(__file__).parent / "guidemap" / "PYTHON_FASTAPI_BACKEND_GUIDELINE.md"
+
 
 def _build_prompt(task: Task, project: Project, review_context: dict | None = None) -> str:
     criteria_text = ""
     if task.acceptance_criteria:
         criteria_list = "\n".join(f"  - {c}" for c in task.acceptance_criteria)
-        criteria_text = f"\n## 수용 기준\n{criteria_list}\n"
+        criteria_text = f"\n## Acceptance Criteria\n{criteria_list}\n"
 
     retry_section = ""
     if review_context:
         attempt = review_context.get("attempt", 1)
         retry_section = (
-            f"\n## ⚠️ 이전 리뷰 실패 결과 (시도 {attempt}회차) — 반드시 수정하세요\n\n"
-            f"### 테스트 실행 결과\n{review_context.get('test_output', '없음')}\n\n"
-            f"### 수용 기준 검토\n{review_context.get('overall_feedback', '없음')}\n"
+            f"\n## Previous Review Failed (Attempt {attempt}) — Fix the issues below\n\n"
+            f"### Test Output\n{review_context.get('test_output', 'N/A')}\n\n"
+            f"### Acceptance Criteria Review\n{review_context.get('overall_feedback', 'N/A')}\n"
+        )
+
+    guideline_section = ""
+    if (
+        project.project_stack == "python"
+        and project.framework == "fastapi"
+        and project.project_type == "new"
+    ):
+        guideline_section = (
+            f"\n## Framework Guideline\n"
+            f"Read `{_GUIDELINE_PATH}` using the Read tool and follow its rules.\n"
         )
 
     return load_prompt(
@@ -37,9 +51,10 @@ def _build_prompt(task: Task, project: Project, review_context: dict | None = No
         criteria_text=criteria_text,
         project_name=project.name,
         project_stack=project.project_stack,
-        framework=project.framework or "미지정",
+        framework=project.framework or "unspecified",
         local_repo_path=project.local_repo_path,
         retry_section=retry_section,
+        guideline_section=guideline_section,
     )
 
 
