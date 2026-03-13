@@ -148,6 +148,17 @@ export interface TaskUpdate {
   sort_order?: number;
 }
 
+// ── Log ───────────────────────────────────────────────────────────────────────
+
+export type LogLevel = 'info' | 'success' | 'warn' | 'error';
+
+export interface LogEntry {
+  id: string;
+  time: string;
+  level: LogLevel;
+  msg: string;
+}
+
 // ── WebSocket Messages ────────────────────────────────────────────────────────
 
 export interface WsMessage {

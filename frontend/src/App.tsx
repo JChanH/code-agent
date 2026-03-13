@@ -1,9 +1,8 @@
-import { useEffect, useState, lazy, Suspense } from 'react';
-import { Bell, Settings, Code2 } from 'lucide-react';
+import { useEffect, useRef, useState, lazy, Suspense } from 'react';
+import { Bell, Settings, Code2, Trash2 } from 'lucide-react';
 import Sidebar from './components/common/Sidebar';
 import { useAppStore, CURRENT_USER_ID } from './stores';
 import { useWebSocket } from './hooks/useWebSocket';
-import { MOCK_LOGS } from './mock/data';
 import { getProjects } from './api/project/projectApis';
 import './App.css';
 
@@ -60,6 +59,15 @@ const LEVEL_LABEL: Record<string, string> = {
 
 function BottomPanel() {
   const [activeTab, setActiveTab] = useState<BottomTab>('로그');
+  const logs = useAppStore((s) => s.logs);
+  const clearLogs = useAppStore((s) => s.clearLogs);
+  const logEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (activeTab === '로그') {
+      logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [logs, activeTab]);
 
   return (
     <div className="app-bottom">
@@ -73,16 +81,34 @@ function BottomPanel() {
             {tab}
           </button>
         ))}
+        {activeTab === '로그' && logs.length > 0 && (
+          <button
+            className="bottom-tab"
+            title="로그 지우기"
+            onClick={clearLogs}
+            style={{ marginLeft: 'auto', opacity: 0.6 }}
+          >
+            <Trash2 size={13} />
+          </button>
+        )}
       </div>
       <div className="bottom-content">
-        {activeTab === '로그' &&
-          MOCK_LOGS.map((log, i) => (
-            <div key={i} className="log-entry">
-              <span className="log-time">{log.time}</span>
-              <span className={LEVEL_CLASS[log.level]}>{LEVEL_LABEL[log.level]}</span>
-              <span className="log-msg">{log.msg}</span>
-            </div>
-          ))}
+        {activeTab === '로그' && (
+          logs.length === 0 ? (
+            <div className="log-msg" style={{ opacity: 0.4 }}>WebSocket 메시지를 기다리는 중...</div>
+          ) : (
+            <>
+              {logs.map((log) => (
+                <div key={log.id} className="log-entry">
+                  <span className="log-time">{log.time}</span>
+                  <span className={LEVEL_CLASS[log.level]}>{LEVEL_LABEL[log.level]}</span>
+                  <span className="log-msg">{log.msg}</span>
+                </div>
+              ))}
+              <div ref={logEndRef} />
+            </>
+          )
+        )}
         {activeTab === '실행 결과' && (
           <div className="log-msg">마지막 에이전트 실행 결과가 여기에 표시됩니다.</div>
         )}

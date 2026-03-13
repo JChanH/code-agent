@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import type {
   ActiveTab,
+  LogEntry,
+  LogLevel,
   Project,
   Spec,
   SpecStatus,
@@ -9,6 +11,51 @@ import type {
   WsMessage,
   WsSpecAnalyzed,
 } from '../types';
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function nowTime(): string {
+  return new Date().toTimeString().slice(0, 8);
+}
+
+function makeLogId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+/** Extract a human-readable line from a raw Claude agent SDK message dump */
+function formatAgentMessage(raw: unknown): { level: LogLevel; msg: string } {
+  if (!raw || typeof raw !== 'object') {
+    return { level: 'info', msg: String(raw).slice(0, 120) };
+  }
+  const m = raw as Record<string, unknown>;
+
+  // AssistantMessage: { role: "assistant", content: [...] }
+  if (m.role === 'assistant' && Array.isArray(m.content)) {
+    const parts: string[] = [];
+    for (const block of m.content as Record<string, unknown>[]) {
+      if (block.type === 'text' && typeof block.text === 'string') {
+        const snippet = block.text.trim().slice(0, 100);
+        if (snippet) parts.push(snippet);
+      } else if (block.type === 'tool_use' && typeof block.name === 'string') {
+        const input = block.input ? JSON.stringify(block.input).slice(0, 60) : '';
+        parts.push(`[${block.name}] ${input}`);
+      }
+    }
+    return { level: 'info', msg: parts.join(' | ') || '(assistant)' };
+  }
+
+  // ResultMessage: { result: "...", stop_reason: "..." }
+  if (typeof m.result === 'string') {
+    return { level: 'success', msg: `결과: ${m.result.slice(0, 100)}` };
+  }
+
+  // Fallback: show message type if available
+  if (typeof m.type === 'string') {
+    return { level: 'info', msg: `[${m.type}]` };
+  }
+
+  return { level: 'info', msg: JSON.stringify(raw).slice(0, 120) };
+}
 
 // ── App Store ─────────────────────────────────────────────────────────────────
 
@@ -20,12 +67,15 @@ interface AppState {
   selectedProjectId: string | null;
   activeTab: ActiveTab;
   guidemapGeneratingProjectIds: Set<string>;
+  logs: LogEntry[];
 
   setProjects: (projects: Project[]) => void;
   addProject: (project: Project) => void;
   selectProject: (id: string | null) => void;
   setActiveTab: (tab: ActiveTab) => void;
   addGuidemapGenerating: (projectId: string) => void;
+  addLog: (level: LogLevel, msg: string) => void;
+  clearLogs: () => void;
   handleWsMessage: (msg: WsMessage) => void;
 }
 
@@ -36,6 +86,7 @@ export const useAppStore = create<AppState>((set) => ({
   selectedProjectId: null, // 현재 선택된 프로젝트 ID
   activeTab: 'design', // 현재 활성된 탭
   guidemapGeneratingProjectIds: new Set(),
+  logs: [],
 
   setProjects: (projects) => set({ projects }),
   addProject: (project) => set((s) => ({ projects: [...s.projects, project] })),
@@ -48,6 +99,16 @@ export const useAppStore = create<AppState>((set) => ({
       return { guidemapGeneratingProjectIds: next };
     }),
 
+  addLog: (level, msg) =>
+    set((s) => ({
+      logs: [
+        ...s.logs,
+        { id: makeLogId(), time: nowTime(), level, msg },
+      ],
+    })),
+
+  clearLogs: () => set({ logs: [] }),
+
   handleWsMessage: (msg) => {
     switch (msg.type) {
       case 'guidemap_generating': {
@@ -57,16 +118,27 @@ export const useAppStore = create<AppState>((set) => ({
           next.add(data.project_id);
           return { guidemapGeneratingProjectIds: next };
         });
+        useAppStore.getState().addLog('info', '가이드맵 생성 시작...');
         break;
       }
-      case 'guidemap_generated':
-      case 'guidemap_failed': {
+      case 'guidemap_generated': {
         const data = msg as unknown as { project_id: string };
         set((s) => {
           const next = new Set(s.guidemapGeneratingProjectIds);
           next.delete(data.project_id);
           return { guidemapGeneratingProjectIds: next };
         });
+        useAppStore.getState().addLog('success', '가이드맵 생성 완료');
+        break;
+      }
+      case 'guidemap_failed': {
+        const data = msg as unknown as { project_id: string; error?: string };
+        set((s) => {
+          const next = new Set(s.guidemapGeneratingProjectIds);
+          next.delete(data.project_id);
+          return { guidemapGeneratingProjectIds: next };
+        });
+        useAppStore.getState().addLog('error', `가이드맵 생성 실패${data.error ? ': ' + data.error : ''}`);
         break;
       }
     }
@@ -112,14 +184,18 @@ export const useTaskStore = create<TaskState>((set) => ({
   removeSpec: (specId) => set((s) => ({ specs: s.specs.filter((sp) => sp.id !== specId) })),
 
   handleWsMessage: (msg) => {
+    const addLog = useAppStore.getState().addLog;
+
     switch (msg.type) {
       case 'task_update': {
-        const data = msg as unknown as { task_id: string; status: TaskStatus };
+        const data = msg as unknown as { task_id: string; status: TaskStatus; message?: string };
         set((s) => ({
           tasks: s.tasks.map((t) =>
             t.id === data.task_id ? { ...t, status: data.status } : t
           ),
         }));
+        const level: LogLevel = data.status === 'done' ? 'success' : data.status === 'failed' ? 'error' : 'info';
+        addLog(level, `Task #${data.task_id} 상태 변경: ${data.status}${data.message ? ' — ' + data.message : ''}`);
         break;
       }
 
@@ -135,6 +211,7 @@ export const useTaskStore = create<TaskState>((set) => ({
             ),
           };
         });
+        addLog('info', `Spec #${(msg as unknown as { spec_id: string }).spec_id} 분석 시작...`);
         break;
       }
 
@@ -155,6 +232,7 @@ export const useTaskStore = create<TaskState>((set) => ({
             tasks: [...s.tasks, ...newTasks],
           };
         });
+        addLog('success', `Spec 분석 완료 — ${data.tasks.length}개 태스크 생성${data.analysis_summary ? ': ' + data.analysis_summary.slice(0, 80) : ''}`);
         break;
       }
 
@@ -170,6 +248,14 @@ export const useTaskStore = create<TaskState>((set) => ({
             ),
           };
         });
+        addLog('error', `Spec 분석 실패: ${data.error}`);
+        break;
+      }
+
+      case 'agent_message': {
+        const data = msg as unknown as { spec_id: string; message: unknown };
+        const { level, msg: text } = formatAgentMessage(data.message);
+        if (text) addLog(level, text);
         break;
       }
     }

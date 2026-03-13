@@ -156,14 +156,34 @@ def _build_prompt(spec_content: str, project: Project) -> str:
     )
 
 
+def _extract_docx_text(path: str) -> str:
+    """Extracts plain text from a .docx file using python-docx."""
+    import docx  # python-docx
+
+    doc = docx.Document(path)
+    parts: list[str] = []
+    for para in doc.paragraphs:
+        if para.text.strip():
+            parts.append(para.text)
+    for table in doc.tables:
+        for row in table.rows:
+            row_text = "\t".join(cell.text.strip() for cell in row.cells)
+            if row_text.strip():
+                parts.append(row_text)
+    return "\n".join(parts)
+
+
 async def _load_spec_content(spec: Spec) -> str:
     """Extracts text content from a Spec for analysis."""
     if spec.raw_content:
         return spec.raw_content
 
     if spec.source_path:
-        # TODO: Extract text from files (PDF/DOCX require separate libraries; text files handled here)
+        path_lower = spec.source_path.lower()
         try:
+            if path_lower.endswith(".docx") or path_lower.endswith(".doc"):
+                return _extract_docx_text(spec.source_path)
+            # Plain text files
             with open(spec.source_path, encoding="utf-8", errors="ignore") as f:
                 return f.read()
         except OSError as e:
@@ -210,25 +230,27 @@ def _save_db_schema_file(local_repo_path: str, db_schema: dict) -> Path:
 
 async def _save_tasks(project_id: str, spec_id: str, task_items: list[dict]) -> list[Task]:
     """Saves the decomposed Task list to the database."""
-    saved: list[Task] = []
+    tasks = [
+        Task(
+            project_id=project_id,
+            spec_id=spec_id,
+            title=item["title"],
+            description=item["description"],
+            acceptance_criteria=item.get("acceptance_criteria"),
+            priority=item.get("priority", "medium"),
+            complexity=item.get("complexity", "medium"),
+            status="plan_reviewing",
+            sort_order=idx,
+        )
+        for idx, item in enumerate(task_items)
+    ]
     async with db_conn.transaction() as session:
-        for idx, item in enumerate(task_items):
-            task = Task(
-                project_id=project_id,
-                spec_id=spec_id,
-                title=item["title"],
-                description=item["description"],
-                acceptance_criteria=item.get("acceptance_criteria"),
-                priority=item.get("priority", "medium"),
-                complexity=item.get("complexity", "medium"),
-                status="plan_reviewing",
-                sort_order=idx,
-            )
+        for task in tasks:
             session.add(task)
-            await session.flush()
+        await session.flush()
+        for task in tasks:
             await session.refresh(task)
-            saved.append(task)
-    return saved
+    return tasks
 
 
 async def analyze_spec_and_create_tasks(spec_id: str) -> None:

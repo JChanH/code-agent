@@ -4,7 +4,7 @@ from app.models.project import Project
 from app.models.security import SecurityProfile
 from app.models.setting import Setting
 from app.models.spec import Spec
-from app.models.task import CodeChange, Review, Task, TaskStep
+from app.models.task import Task, TaskStep
 from app.models.user import User, UserWorktree
 
 __all__ = [
@@ -14,8 +14,6 @@ __all__ = [
     "Spec",
     "Task",
     "TaskStep",
-    "CodeChange",
-    "Review",
     "SecurityProfile",
     "Setting",
 ]

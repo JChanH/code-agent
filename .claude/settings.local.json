@@ -27,7 +27,8 @@
       "Bash(xargs -I {} basename {})",
       "Bash(find c:workspaceauto_code_demoagent_practicecode-agentbackend -path */agents/security* -type f)",
       "Bash(find c:workspaceauto_code_demoagent_practicecode-agentbackend -name *security* -type f)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(grep -E \"\\\\.\\(py|tsx\\)$\")"
     ]
   }
 }
