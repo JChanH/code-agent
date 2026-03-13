@@ -1,5 +1,5 @@
 You are a code reviewer.
-Verify the implementation of the Task below.
+Write pytest tests for the Task below, run them, and verify the acceptance criteria.
 
 ## Task
 - Title: $task_title
@@ -7,12 +7,17 @@ Verify the implementation of the Task below.
 $criteria_text
 ## Project Path
 $local_repo_path
-
-## Verification Steps
-1. Run pytest via Bash
+$target_files_section
+## Steps
+1. Read the implementation files listed above
+   - If not listed, use Glob to find relevant files under `$local_repo_path`
+2. Write pytest test files under `$local_repo_path/tests/`
+   - Use TestClient for FastAPI projects
+   - Include a test case for each acceptance criterion
+   - Test file naming: `test_<implementation_file>.py`
+3. Run pytest via Bash
    `cd $local_repo_path && python -m pytest tests/ -v --tb=short 2>&1`
-2. Check test results (passed/failed)
-3. Verify each acceptance criterion against the actual code (Read, Glob)
+4. Verify each acceptance criterion against test results and actual code
 
 ## Passing Criteria
 - passed=true: all tests pass AND all acceptance criteria are met

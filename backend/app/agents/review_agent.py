@@ -27,24 +27,12 @@ REVIEW_SCHEMA: dict[str, Any] = {
             "type": "string",
             "description": "Full pytest output",
         },
-        "criteria_results": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "criterion": {"type": "string"},
-                    "passed": {"type": "boolean"},
-                    "reason": {"type": "string"},
-                },
-                "required": ["criterion", "passed", "reason"],
-            },
-        },
         "overall_feedback": {
             "type": "string",
             "description": "Specific fix directions to pass to code_agent on retry",
         },
     },
-    "required": ["passed", "test_output", "criteria_results", "overall_feedback"],
+    "required": ["passed", "test_output", "overall_feedback"],
 }
 
 
@@ -61,12 +49,18 @@ def _build_prompt(task: Task, project: Project) -> str:
         criteria_list = "\n".join(f"  - {c}" for c in task.acceptance_criteria)
         criteria_text = f"\n## Acceptance Criteria\n{criteria_list}\n"
 
+    target_files_section = ""
+    if task.target_files:
+        files_list = "\n".join(f"  - {project.local_repo_path}/{f}" for f in task.target_files)
+        target_files_section = f"\n## Implementation Files\nReview these files:\n{files_list}\n"
+
     return load_prompt(
         "review_agent.md",
         task_title=task.title,
         task_description=task.description,
         criteria_text=criteria_text,
         local_repo_path=project.local_repo_path,
+        target_files_section=target_files_section,
     )
 
 
@@ -85,9 +79,9 @@ async def run_review_agent(
     prompt = _build_prompt(task, project)
 
     options = ClaudeAgentOptions(
-        allowed_tools=["Read", "Glob", "Grep", "Bash"],
+        allowed_tools=["Read", "Write", "Edit", "Glob", "Grep", "Bash"],
         permission_mode="bypassPermissions",
-        max_turns=20,
+        max_turns=15,
         output_format={"type": "json_schema", "schema": REVIEW_SCHEMA},
     )
 

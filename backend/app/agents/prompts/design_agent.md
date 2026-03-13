@@ -24,7 +24,7 @@ $spec_content
    - Example: "POST /user/login with non-existent email → 400 + error.code: USER_NOT_FOUND"
    - Example: "GET /user/info without Authorization header → 401"
    - Example: "After successful signup, the users table contains a row with the given email"
-4. Analyze the existing codebase structure before designing Tasks
+4. Analyze the existing codebase structure before designing Tasks, and for each Task list the specific files to create or modify in `target_files` (relative paths from repo root, e.g. `app/api/users.py`)
 5. Follow framework conventions ($framework)
 6. Return the result in JSON format only
 7. **New projects only**: Design the DB schema and include it in the `db_schema` field

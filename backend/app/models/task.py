@@ -45,7 +45,9 @@ class Task(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False)
     
     acceptance_criteria: Mapped[Optional[Any]] = mapped_column(JSON)
-    
+
+    target_files: Mapped[Optional[Any]] = mapped_column(JSON)
+
     # 중요도
     priority: Mapped[str] = mapped_column(
         Enum("low", "medium", "high", "critical", name="task_priority_enum"),

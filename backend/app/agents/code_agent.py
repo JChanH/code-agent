@@ -44,6 +44,16 @@ def _build_prompt(task: Task, project: Project, review_context: dict | None = No
             f"Read `{_GUIDELINE_PATH}` using the Read tool and follow its rules.\n"
         )
 
+    target_files_section = ""
+    if task.target_files:
+        files_list = "\n".join(f"  - {f}" for f in task.target_files)
+        target_files_section = (
+            f"\n## Target Files\n"
+            f"Create or modify these files (relative to `{project.local_repo_path}`):\n"
+            f"{files_list}\n"
+            f"Read these files first (and their neighbors for patterns), then implement.\n"
+        )
+
     return load_prompt(
         "code_agent.md",
         task_title=task.title,
@@ -55,6 +65,7 @@ def _build_prompt(task: Task, project: Project, review_context: dict | None = No
         local_repo_path=project.local_repo_path,
         retry_section=retry_section,
         guideline_section=guideline_section,
+        target_files_section=target_files_section,
     )
 
 
@@ -77,7 +88,7 @@ async def run_code_agent(
     options = ClaudeAgentOptions(
         allowed_tools=["Read", "Write", "Edit", "Glob", "Grep", "Bash"],
         permission_mode="bypassPermissions",
-        max_turns=50,
+        max_turns=10,
     )
 
     async for message in query(prompt=prompt, options=options):

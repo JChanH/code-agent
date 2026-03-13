@@ -40,6 +40,11 @@ TASK_LIST_SCHEMA: dict[str, Any] = {
                         "type": "array",
                         "items": {"type": "string"},
                     },
+                    "target_files": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "File paths to create or modify, relative to the project root (e.g. app/api/users.py)",
+                    },
                     "priority": {
                         "type": "string",
                         "enum": ["low", "medium", "high", "critical"],
@@ -237,6 +242,7 @@ async def _save_tasks(project_id: str, spec_id: str, task_items: list[dict]) -> 
             title=item["title"],
             description=item["description"],
             acceptance_criteria=item.get("acceptance_criteria"),
+            target_files=item.get("target_files"),
             priority=item.get("priority", "medium"),
             complexity=item.get("complexity", "medium"),
             status="plan_reviewing",

@@ -6,7 +6,7 @@ import type { Task, TaskPriority, TaskStatus } from "../../types";
 const STATUS_ICON: Record<TaskStatus, React.ReactNode> = {
   plan_reviewing: <Clock size={13} style={{ color: "#f59e0b" }} />,
   confirmed:      <CheckCircle2 size={13} style={{ color: "#22c55e" }} />,
-  coding:         <Loader size={13} style={{ color: "#6366f1" }} />,
+  coding:         <Loader size={13} className="animate-spin" style={{ color: "#6366f1" }} />,
   reviewing:      <Clock size={13} style={{ color: "#8b5cf6" }} />,
   done:           <CheckCircle2 size={13} style={{ color: "#10b981" }} />,
   failed:         <XCircle size={13} style={{ color: "#ef4444" }} />,
