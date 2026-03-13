@@ -38,9 +38,6 @@ class Spec(Base):
     # 문자열 소스
     raw_content: Mapped[Optional[str]] = mapped_column(Text)
     
-    # 분석 결과
-    analysis_result: Mapped[Optional[str]] = mapped_column(Text)
-    
     # 상태
     status: Mapped[str] = mapped_column(
         Enum("uploaded", "analyzing", "analyzed", "final_confirmed", name="spec_status_enum"),

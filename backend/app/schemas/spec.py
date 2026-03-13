@@ -20,7 +20,6 @@ class SpecResponse(BaseModel):
     source_type: SpecSourceType
     source_path: Optional[str]
     raw_content: Optional[str]
-    analysis_result: Optional[str]
     status: SpecStatus
     created_at: datetime
 

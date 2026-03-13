@@ -337,11 +337,7 @@ async def analyze_spec_and_create_tasks(spec_id: str) -> None:
         saved_tasks = await _save_tasks(project_id, spec_id, task_items)
 
         # 5. Set Spec status → analyzed
-        await _update_spec_status(
-            spec_id,
-            "analyzed",
-            analysis_result=json.dumps(parsed or {}, ensure_ascii=False),
-        )
+        await _update_spec_status(spec_id, "analyzed")
 
         # 6. Broadcast completion
         await broadcast(

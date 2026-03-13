@@ -94,7 +94,6 @@ export interface Spec {
   source_type: SpecSourceType;
   source_path: string | null;
   raw_content: string | null;
-  analysis_result: Record<string, unknown> | null;
   status: SpecStatus;
   created_at: string;
 }
