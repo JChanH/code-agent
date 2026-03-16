@@ -87,6 +87,7 @@ async def run_code_agent(
     prompt = _build_prompt(task, project, review_context)
 
     options = ClaudeAgentOptions(
+        model="claude-sonnet-4-6",
         allowed_tools=["Read", "Write", "Edit", "Glob", "Grep", "Bash"],
         permission_mode="bypassPermissions",
         max_turns=10,

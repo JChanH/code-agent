@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from app.config import get_settings
 
 from contextlib import asynccontextmanager  # 비동기 컨텍스트 메니저 사용 doco
@@ -33,7 +35,8 @@ class DBManager:
             max_overflow=max_overflow,
             pool_pre_ping=pool_pre_ping,
             pool_recycle=pool_recycle,
-            echo=False
+            echo=False,
+            json_serializer=lambda obj: json.dumps(obj, ensure_ascii=False),
             # echo=settings.ENVIRONMENT == "development",
         )
 

@@ -295,7 +295,7 @@ async def analyze_spec_and_create_tasks(spec_id: str) -> None:
         prompt = _build_prompt(spec_content, project)
 
         options = ClaudeAgentOptions(
-            model="claude-haiku-4-5-20251001",
+            model="claude-opus-4-6",
             allowed_tools=["Read", "Glob", "Grep"],
             permission_mode="bypassPermissions",
             max_turns=10,
@@ -304,7 +304,6 @@ async def analyze_spec_and_create_tasks(spec_id: str) -> None:
 
         parsed: dict | None = None
 
-        print("Agent started")
         async for message in query(prompt=prompt, options=options):
             # Forward agent messages to WebSocket
             try:

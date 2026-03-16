@@ -11,26 +11,19 @@ $codebase_section
 $spec_content
 
 ## Rules
-1. **Primary decomposition unit: API endpoint**
-   - First, identify all API endpoints from the spec and group them as the primary task unit
-   - Each API-unit Task covers the full vertical slice: **router + service + repository** for that endpoint
-   - Example: "POST /users/signup — router, service, repository" is one Task
-   - Only split further (e.g., DB migration as a separate Task) when the work is clearly separable and non-trivial
-   - If multiple endpoints share the same domain and are trivially small, they may be grouped into one Task (e.g., CRUD for a single resource)
-2. Break down each Task into units completable within 1-4 hours
-3. Write acceptance_criteria as conditions directly convertible to pytest test cases
-   - Format: "{HTTP method} {path} + {input condition} → {expected status code} + {expected response}"
-   - Example: "POST /user/login with valid credentials → 200 + access_token included"
-   - Example: "POST /user/login with non-existent email → 400 + error.code: USER_NOT_FOUND"
-   - Example: "GET /user/info without Authorization header → 401"
-   - Example: "After successful signup, the users table contains a row with the given email"
-4. Analyze the existing codebase structure before designing Tasks, and for each Task list the specific files to create or modify in `target_files` (relative paths from repo root, e.g. `app/api/users.py`)
-5. Follow framework conventions ($framework)
-6. Return the result in JSON format only
-7. **New projects only**: Design the DB schema and include it in the `db_schema` field
-   - Identify all entities from the spec and define a table for each
-   - Every table must include `id`, `created_at`, `updated_at` columns
-   - Choose appropriate SQL types (e.g., VARCHAR(36) for UUID, TEXT for long strings, BOOLEAN, TIMESTAMP)
-   - Set nullable=false for required fields, nullable=true for optional fields
-   - Write a brief `description` for each table and column
-   - For existing projects, omit the `db_schema` field entirely
+1. **Task 분해 단위: 개별 API endpoint 1개 = Task 1개**
+   - Spec Content에서 API endpoint를 먼저 전부 열거하라
+   - 각 endpoint는 반드시 독립된 Task로 분리한다 — 절대 묶지 않는다
+   - 각 Task는 해당 endpoint의 전체 수직 슬라이스를 포함한다: **router + service + repository**
+   - Task title 형식: `{HTTP method} {path}` (예: `POST /users/signup`, `GET /users/me`)
+   - 예외: DB migration, 공통 모델/스키마 정의처럼 endpoint가 아닌 작업은 별도 Task로 분리
+2. 각 Task는 1-4시간 내 완료 가능한 단위로 작성
+3. **acceptance_criteria는 반드시 HTTP 요청/응답 형식으로만 작성한다**
+   - 형식: `{HTTP method} {path} + {입력 조건} → {예상 status code} + {예상 응답}`
+   - 올바른 예: `POST /users/login with valid credentials → 200 + access_token included`
+   - 올바른 예: `POST /users/login with non-existent email → 400 + error.code: USER_NOT_FOUND`
+   - 올바른 예: `GET /users/me without Authorization header → 401`
+   - **잘못된 예 (절대 사용 금지)**: `UserInfoResponse 모델이 email 필드를 포함한다` (모델 구조 설명은 criteria가 아님)
+   - **잘못된 예 (절대 사용 금지)**: `UserNotFoundException 발생 시 404이다` (예외 설명은 criteria가 아님 — HTTP 형식으로 변환할 것)
+4. 기존 코드베이스 구조를 분석한 후 각 Task의 `target_files`에 생성/수정할 파일 경로를 명시한다 (repo root 기준 상대경로, 예: `app/api/users.py`)
+5. 결과는 JSON 형식으로만 반환한다
