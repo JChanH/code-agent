@@ -13,15 +13,15 @@ from app.agents.prompts import load_prompt
 
 logger = logging.getLogger(__name__)
 
-_GUIDEMAP_RELATIVE_PATH = Path("docs") / "guidemap" / "EXISTING_PROJECT_GUIDE.md"
+_GUIDEMAP_DIR = Path(__file__).parent / "guidemaps"
 
 
-def _get_guidemap_path(local_repo_path: str) -> Path:
-    return Path(local_repo_path) / _GUIDEMAP_RELATIVE_PATH
+def _get_guidemap_path(project_name: str) -> Path:
+    return _GUIDEMAP_DIR / f"{project_name}_guidemap.md"
 
 
-def guidemap_exists(local_repo_path: str) -> bool:
-    return _get_guidemap_path(local_repo_path).exists()
+def guidemap_exists(project_name: str) -> bool:
+    return _get_guidemap_path(project_name).exists()
 
 
 def _build_prompt(project: Project) -> str:
@@ -33,8 +33,8 @@ def _build_prompt(project: Project) -> str:
     )
 
 
-def _save_guidemap(local_repo_path: str, content: str) -> Path:
-    path = _get_guidemap_path(local_repo_path)
+def _save_guidemap(project_name: str, content: str) -> Path:
+    path = _get_guidemap_path(project_name)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
     logger.info("Guidemap written to %s", path)
@@ -77,12 +77,12 @@ async def generate_guidemap(project: Project) -> None:
         if not result_text:
             raise ValueError("Guidemap agent returned no content.")
 
-        _save_guidemap(project.local_repo_path, result_text)
+        _save_guidemap(project.name, result_text)
 
         await broadcast({
             "type": "guidemap_generated",
             "project_id": project_id,
-            "path": str(_get_guidemap_path(project.local_repo_path)),
+            "path": str(_get_guidemap_path(project.name)),
         })
 
     except Exception as exc:

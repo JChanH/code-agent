@@ -116,8 +116,8 @@ def _get_stack_context(project: Project) -> str:
             )
             
         # 기존 프로젝트의 경우, 별도로 생성된 guideline을 참고합니다
-        if project.local_repo_path and guidemap_exists(project.local_repo_path):
-            guidemap_path = _get_guidemap_path(project.local_repo_path)
+        if guidemap_exists(project.name):
+            guidemap_path = _get_guidemap_path(project.name)
             return (
                 f"- This is an existing FastAPI project.\n"
                 f"- A pre-generated guidemap is available at `{guidemap_path}`.\n"
@@ -144,7 +144,7 @@ def _build_prompt(spec_content: str, project: Project) -> str:
     if project.local_repo_path:
         guidemap_ready = (
             project.project_type == "existing"
-            and guidemap_exists(project.local_repo_path)
+            and guidemap_exists(project.name)
         )
         if not guidemap_ready:
             codebase_section = load_prompt(
