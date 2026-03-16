@@ -298,7 +298,7 @@ async def analyze_spec_and_create_tasks(spec_id: str) -> None:
             model="claude-sonnet-4-6",
             allowed_tools=["Read", "Glob", "Grep"],
             permission_mode="bypassPermissions",
-            max_turns=10,
+            max_turns=30,
             output_format={"type": "json_schema", "schema": TASK_LIST_SCHEMA},
         )
 

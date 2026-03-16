@@ -9,6 +9,7 @@ from app.config import get_settings
 from app.api import (
     agent_router,
     git_router,
+    legacy_router,
     project_specs_router,
     project_tasks_router,
     project_worktrees_router,
@@ -78,6 +79,7 @@ app.include_router(project_specs_router, prefix="/api")
 app.include_router(specs_router, prefix="/api")
 app.include_router(git_router, prefix="/api")
 app.include_router(agent_router, prefix="/api")
+app.include_router(legacy_router, prefix="/api")
 
 
 # ── WebSocket endpoint ───────────────────────

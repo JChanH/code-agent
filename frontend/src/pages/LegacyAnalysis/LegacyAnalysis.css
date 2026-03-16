@@ -36,6 +36,18 @@
   align-items: center;
 }
 
+.la-error-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 6px;
+  color: var(--danger);
+  font-size: 12px;
+}
+
 .la-path-input-wrap {
   flex: 1;
   display: flex;
@@ -131,6 +143,52 @@
   color: var(--danger);
 }
 
+/* ── Progress log (analyzing state) ─────────────────────────────────────── */
+
+.la-progress-log {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.la-progress-log-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.la-progress-log-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+  font-family: 'Consolas', 'Fira Code', monospace;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.la-progress-line {
+  color: var(--text-muted);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.la-progress-line--muted {
+  opacity: 0.4;
+  font-style: italic;
+}
+
 /* ── Body layout ─────────────────────────────────────────────────────────── */
 
 .la-body {
@@ -178,6 +236,112 @@
   color: var(--text-muted);
   font-size: 13px;
   text-align: center;
+}
+
+/* ── Smart Content Renderer ──────────────────────────────────────────────── */
+
+.sc-root {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.sc-group-header {
+  margin-top: 10px;
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-hover);
+  letter-spacing: 0.04em;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sc-group-header:first-child {
+  margin-top: 0;
+}
+
+.sc-api-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.sc-method {
+  font-family: 'Consolas', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 52px;
+  text-align: center;
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid currentColor;
+  flex-shrink: 0;
+  letter-spacing: 0.03em;
+}
+
+.sc-path {
+  font-family: 'Consolas', 'Fira Code', monospace;
+  font-size: 11px;
+  color: var(--text);
+  min-width: 0;
+  word-break: break-all;
+}
+
+.sc-desc {
+  color: var(--text-muted);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.sc-step {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 4px 0;
+}
+
+.sc-step-num {
+  min-width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.sc-step-body {
+  color: var(--text-muted);
+  flex: 1;
+}
+
+.sc-step-label {
+  color: var(--accent-hover);
+  font-weight: 600;
+  margin-right: 6px;
+}
+
+.sc-bullet {
+  color: var(--text-muted);
+  padding-left: 16px;
+  font-size: 11px;
+}
+
+.sc-text {
+  color: var(--text-muted);
+}
+
+.sc-spacer {
+  height: 6px;
 }
 
 /* ── Analysis sections ───────────────────────────────────────────────────── */

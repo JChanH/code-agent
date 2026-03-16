@@ -90,7 +90,7 @@ async def run_code_agent(
         model="claude-sonnet-4-6",
         allowed_tools=["Read", "Write", "Edit", "Glob", "Grep", "Bash"],
         permission_mode="bypassPermissions",
-        max_turns=10,
+        max_turns=20,
     )
 
     async for message in query(prompt=prompt, options=options):

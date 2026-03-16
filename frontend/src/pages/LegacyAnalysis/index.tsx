@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   FolderSearch,
   Play,
@@ -11,10 +11,14 @@ import {
   CheckCircle2,
   Bot,
   User,
+  Terminal,
 } from 'lucide-react';
+import { startAnalysis, sendChat, type AnalysisSection } from '../../api/legacy/legacyApis';
+import { WebSocketClient } from '../../services/websocket';
+import type { WsMessage } from '../../types';
 import './LegacyAnalysis.css';
 
-// ── Types ────────────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface ChatMessage {
   id: string;
@@ -23,16 +27,11 @@ interface ChatMessage {
   timestamp: string;
 }
 
-interface AnalysisSection {
-  title: string;
-  content: string;
-}
-
 type AnalysisStatus = 'idle' | 'analyzing' | 'done' | 'error';
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-function now() {
+function nowStr() {
   return new Date().toLocaleTimeString('ko-KR', { hour12: false });
 }
 
@@ -40,7 +39,42 @@ function uid() {
   return Math.random().toString(36).slice(2);
 }
 
-// ── Sub-components ───────────────────────────────────────────────────────────
+function makeSessionId() {
+  return `legacy-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/** SDK agent_message에서 사람이 읽을 수 있는 한 줄 텍스트 추출 (stores/index.ts formatAgentMessage 동일 로직) */
+function extractLogLine(raw: unknown): string | null {
+  if (!raw || typeof raw !== 'object') return typeof raw === 'string' ? raw : null;
+  const m = raw as Record<string, unknown>;
+
+  // AssistantMessage: { role: "assistant", content: [...] }
+  if (m.role === 'assistant' && Array.isArray(m.content)) {
+    const parts: string[] = [];
+    for (const block of m.content as Record<string, unknown>[]) {
+      if (block.type === 'text' && typeof block.text === 'string') {
+        const snippet = block.text.trim().split('\n')[0].slice(0, 100);
+        if (snippet) parts.push(snippet);
+      } else if (block.type === 'tool_use' && typeof block.name === 'string') {
+        const input = block.input as Record<string, unknown> | undefined;
+        const detail = input
+          ? (Object.values(input).find((v) => typeof v === 'string') as string ?? '')
+          : '';
+        parts.push(`[${block.name}] ${detail}`);
+      }
+    }
+    return parts.join(' | ') || null;
+  }
+
+  // ResultMessage: { result: "..." }
+  if (typeof m.result === 'string' && m.result.length > 0) {
+    return `완료: ${m.result.split('\n')[0].slice(0, 100)}`;
+  }
+
+  return null;
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: AnalysisStatus }) {
   if (status === 'idle') return null;
@@ -66,11 +100,129 @@ function StatusBadge({ status }: { status: AnalysisStatus }) {
   );
 }
 
-function AnalysisResultPanel({ sections }: { sections: AnalysisSection[] }) {
+function ProgressLog({ logs }: { logs: string[] }) {
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [logs]);
+
+  return (
+    <div className="la-progress-log">
+      <div className="la-progress-log-header">
+        <Terminal size={12} />
+        <span>에이전트 진행 상황</span>
+        <Loader2 size={12} className="animate-spin" style={{ marginLeft: 'auto' }} />
+      </div>
+      <div className="la-progress-log-body">
+        {logs.length === 0 && (
+          <span className="la-progress-line la-progress-line--muted">에이전트 시작 중...</span>
+        )}
+        {logs.map((line, i) => (
+          <div key={i} className="la-progress-line">{line}</div>
+        ))}
+        <div ref={bottomRef} />
+      </div>
+    </div>
+  );
+}
+
+// ── Smart Content Renderer ────────────────────────────────────────────────────
+
+const METHOD_COLORS: Record<string, string> = {
+  get: '#22c55e',
+  post: '#3b82f6',
+  put: '#f59e0b',
+  delete: '#ef4444',
+  patch: '#a78bfa',
+};
+
+function SmartContent({ content }: { content: string }) {
+  const lines = content.split('\n');
+  const elements: React.ReactNode[] = [];
+
+  lines.forEach((line, i) => {
+    // 그룹 헤더: 【...】
+    const groupMatch = line.match(/^【(.+)】$/);
+    if (groupMatch) {
+      elements.push(
+        <div key={i} className="sc-group-header">{groupMatch[1]}</div>
+      );
+      return;
+    }
+
+    // HTTP 메서드 라인: "  GET   /path   - 설명"
+    const methodMatch = line.match(/^\s+(GET|POST|PUT|DELETE|PATCH)\s+(\S+)\s+-\s*(.+)$/);
+    if (methodMatch) {
+      const [, method, path, desc] = methodMatch;
+      const color = METHOD_COLORS[method.toLowerCase()] ?? '#6b7280';
+      elements.push(
+        <div key={i} className="sc-api-row">
+          <span className="sc-method" style={{ color, borderColor: color }}>{method}</span>
+          <code className="sc-path">{path}</code>
+          <span className="sc-desc">{desc}</span>
+        </div>
+      );
+      return;
+    }
+
+    // 번호 단계: "1. [레이어] 설명" 또는 "1. 설명"
+    const stepMatch = line.match(/^(\d+)\.\s+(\[.+?\])?\s*(.+)$/);
+    if (stepMatch) {
+      const [, num, label, desc] = stepMatch;
+      elements.push(
+        <div key={i} className="sc-step">
+          <span className="sc-step-num">{num}</span>
+          <span className="sc-step-body">
+            {label && <span className="sc-step-label">{label}</span>}
+            {desc}
+          </span>
+        </div>
+      );
+      return;
+    }
+
+    // 들여쓰기 불릿/화살표: "  - " or "  → "
+    const bulletMatch = line.match(/^\s{2,}[-→]\s+(.+)$/);
+    if (bulletMatch) {
+      elements.push(
+        <div key={i} className="sc-bullet">· {bulletMatch[1]}</div>
+      );
+      return;
+    }
+
+    // 빈 줄
+    if (line.trim() === '') {
+      elements.push(<div key={i} className="sc-spacer" />);
+      return;
+    }
+
+    // 기본 텍스트
+    elements.push(<div key={i} className="sc-text">{line}</div>);
+  });
+
+  return <div className="sc-root">{elements}</div>;
+}
+
+// ── Analysis Result Panel ─────────────────────────────────────────────────────
+
+function AnalysisResultPanel({
+  sections,
+  status,
+  progressLogs,
+}: {
+  sections: AnalysisSection[];
+  status: AnalysisStatus;
+  progressLogs: string[];
+}) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   function toggle(title: string) {
     setExpanded((prev) => ({ ...prev, [title]: !prev[title] }));
+  }
+
+  if (status === 'analyzing') {
+    return <ProgressLog logs={progressLogs} />;
   }
 
   if (sections.length === 0) {
@@ -85,7 +237,7 @@ function AnalysisResultPanel({ sections }: { sections: AnalysisSection[] }) {
   return (
     <div className="la-sections">
       {sections.map((sec) => {
-        const open = expanded[sec.title] !== false; // default open
+        const open = expanded[sec.title] !== false;
         return (
           <div key={sec.title} className="la-section">
             <button className="la-section-header" onClick={() => toggle(sec.title)}>
@@ -94,7 +246,7 @@ function AnalysisResultPanel({ sections }: { sections: AnalysisSection[] }) {
             </button>
             {open && (
               <div className="la-section-body">
-                <pre>{sec.content}</pre>
+                <SmartContent content={sec.content} />
               </div>
             )}
           </div>
@@ -108,10 +260,12 @@ function ChatPanel({
   messages,
   onSend,
   disabled,
+  sending,
 }: {
   messages: ChatMessage[];
   onSend: (text: string) => void;
   disabled: boolean;
+  sending: boolean;
 }) {
   const [input, setInput] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -122,7 +276,7 @@ function ChatPanel({
 
   function handleSend() {
     const text = input.trim();
-    if (!text) return;
+    if (!text || sending) return;
     onSend(text);
     setInput('');
   }
@@ -158,6 +312,16 @@ function ChatPanel({
             </div>
           </div>
         ))}
+        {sending && (
+          <div className="la-msg la-msg--assistant">
+            <div className="la-msg-avatar"><Bot size={13} /></div>
+            <div className="la-msg-body">
+              <div className="la-msg-content" style={{ opacity: 0.5 }}>
+                <Loader2 size={13} className="animate-spin" style={{ display: 'inline' }} /> 답변 생성 중...
+              </div>
+            </div>
+          </div>
+        )}
         <div ref={bottomRef} />
       </div>
       <div className="la-chat-input">
@@ -166,13 +330,13 @@ function ChatPanel({
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKey}
           placeholder={disabled ? '분석이 완료된 후 질문할 수 있습니다.' : '코드에 대해 질문하세요... (Enter 전송)'}
-          disabled={disabled}
+          disabled={disabled || sending}
           rows={2}
         />
         <button
           className="la-send-btn"
           onClick={handleSend}
-          disabled={disabled || !input.trim()}
+          disabled={disabled || sending || !input.trim()}
           title="전송"
         >
           <Send size={15} />
@@ -182,51 +346,57 @@ function ChatPanel({
   );
 }
 
-// ── Mock analysis helper (UI 데모용) ─────────────────────────────────────────
-
-function buildMockSections(path: string): AnalysisSection[] {
-  return [
-    {
-      title: '📁 프로젝트 개요',
-      content: `분석 경로: ${path}\n\n이 코드베이스는 레거시 시스템으로, 여러 모듈로 구성되어 있습니다.\n언어 및 프레임워크를 자동으로 감지하여 분석 결과를 제공합니다.`,
-    },
-    {
-      title: '🏗️ 아키텍처 분석',
-      content: `레이어 구조:\n  • Presentation Layer (UI / Controller)\n  • Business Logic Layer (Service / Domain)\n  • Data Access Layer (Repository / DAO)\n\n의존성 방향: 상위 → 하위 레이어 단방향 의존`,
-    },
-    {
-      title: '⚠️ 코드 품질 이슈',
-      content: `발견된 주요 이슈:\n  1. 순환 의존성 3건\n  2. God Object 패턴 2개 파일\n  3. 하드코딩된 설정값 (DB, API URL 등)\n  4. 테스트 커버리지 낮음 (~12%)\n  5. 미사용 코드(Dead Code) 다수`,
-    },
-    {
-      title: '🔄 리팩토링 제안',
-      content: `우선순위 높음:\n  → 설정 분리: config 파일 또는 환경변수로 이동\n  → 의존성 주입(DI) 패턴 도입\n  → 공통 유틸 메서드 추출\n\n우선순위 중간:\n  → 서비스 레이어 분리\n  → 인터페이스/추상화 도입\n  → 단위 테스트 추가`,
-    },
-    {
-      title: '📊 파일 통계',
-      content: `총 파일 수: 142개\nLOC (총 라인 수): 18,432\n\n언어 분포:\n  Python   62%  ██████████████████░░\n  SQL      18%  █████░░░░░░░░░░░░░░░\n  Shell     8%  ██░░░░░░░░░░░░░░░░░░\n  기타     12%  ███░░░░░░░░░░░░░░░░░`,
-    },
-  ];
-}
-
-function buildMockReply(question: string): string {
-  const q = question.toLowerCase();
-  if (q.includes('아키텍처') || q.includes('구조'))
-    return '이 코드베이스는 MVC 패턴 기반으로 구성되어 있으나 레이어 간 결합도가 높습니다. Service 레이어가 직접 DB를 호출하는 경우가 많아 Repository 패턴 도입을 권장합니다.';
-  if (q.includes('테스트') || q.includes('test'))
-    return '현재 테스트 커버리지는 약 12%로 매우 낮습니다. 핵심 비즈니스 로직부터 단위 테스트를 작성하고, CI/CD에 테스트 실행 단계를 추가하는 것을 권장합니다.';
-  if (q.includes('의존성') || q.includes('순환'))
-    return '순환 의존성 3건이 발견되었습니다. ModuleA → ModuleB → ModuleC → ModuleA 형태의 의존 고리가 있습니다. 공통 인터페이스를 추출하거나 이벤트 기반 통신으로 해소할 수 있습니다.';
-  return `"${question}"에 대한 분석 결과:\n\n분석된 코드베이스를 기반으로 답변드립니다. 실제 구현에서는 Claude API를 통해 코드 컨텍스트와 함께 질문을 처리하여 더 정확한 답변을 제공할 수 있습니다.`;
-}
-
-// ── Main Page ─────────────────────────────────────────────────────────────────
+// ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function LegacyAnalysis() {
   const [codePath, setCodePath] = useState('');
   const [status, setStatus] = useState<AnalysisStatus>('idle');
   const [sections, setSections] = useState<AnalysisSection[]>([]);
+  const [progressLogs, setProgressLogs] = useState<string[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [sending, setSending] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const sessionIdRef = useRef<string>(makeSessionId());
+  const wsRef = useRef<WebSocketClient | null>(null);
+
+  const connectWs = useCallback((sessionId: string) => {
+    if (wsRef.current) wsRef.current.disconnect();
+
+    const ws = new WebSocketClient();
+    ws.connect(sessionId);
+
+    ws.onMessage((msg: WsMessage) => {
+      // 백엔드 메시지는 flat 구조: { type, session_id, ...fields }
+      const raw = msg as unknown as Record<string, unknown>;
+
+      if (raw.type === 'agent_message') {
+        const line = extractLogLine(raw.message);
+        if (line) setProgressLogs((prev) => [...prev, line]);
+      } else if (raw.type === 'legacy_analyzed') {
+        const sections = (raw.sections as AnalysisSection[]) ?? [];
+        setSections(sections);
+        setStatus('done');
+        setMessages([{
+          id: uid(),
+          role: 'assistant',
+          content: '코드 분석이 완료되었습니다. 궁금한 점을 질문해 주세요.',
+          timestamp: nowStr(),
+        }]);
+        ws.disconnect();
+      } else if (raw.type === 'legacy_analyze_failed') {
+        setErrorMsg((raw.error as string) ?? '분석 중 오류가 발생했습니다.');
+        setStatus('error');
+        ws.disconnect();
+      }
+    });
+
+    wsRef.current = ws;
+  }, []);
+
+  useEffect(() => {
+    return () => { wsRef.current?.disconnect(); };
+  }, []);
 
   async function handlePickDirectory() {
     const path = await window.electronAPI?.openDirectory();
@@ -234,44 +404,49 @@ export default function LegacyAnalysis() {
   }
 
   async function handleAnalyze() {
-    if (!codePath.trim()) return;
+    if (!codePath.trim() || status === 'analyzing') return;
+
+    const sessionId = makeSessionId();
+    sessionIdRef.current = sessionId;
+
     setStatus('analyzing');
     setSections([]);
+    setProgressLogs([]);
     setMessages([]);
+    setErrorMsg(null);
 
-    // TODO: replace with real API call
-    await new Promise((r) => setTimeout(r, 1800));
-    setSections(buildMockSections(codePath));
-    setStatus('done');
-    setMessages([
-      {
-        id: uid(),
-        role: 'assistant',
-        content: `${codePath} 경로의 코드 분석이 완료되었습니다. 코드에 대해 궁금한 점을 질문해 주세요.`,
-        timestamp: now(),
-      },
-    ]);
+    connectWs(sessionId);
+
+    const result = await startAnalysis(sessionId, codePath);
+    if (!result.success) {
+      setStatus('error');
+      setErrorMsg(result.error?.message ?? '분석 요청에 실패했습니다.');
+      wsRef.current?.disconnect();
+    }
   }
 
-  function handleChatSend(text: string) {
-    const userMsg: ChatMessage = { id: uid(), role: 'user', content: text, timestamp: now() };
+  async function handleChatSend(text: string) {
+    const userMsg: ChatMessage = { id: uid(), role: 'user', content: text, timestamp: nowStr() };
     setMessages((prev) => [...prev, userMsg]);
+    setSending(true);
 
-    // TODO: replace with real API call
-    setTimeout(() => {
-      const reply: ChatMessage = {
-        id: uid(),
-        role: 'assistant',
-        content: buildMockReply(text),
-        timestamp: now(),
-      };
-      setMessages((prev) => [...prev, reply]);
-    }, 700);
+    const result = await sendChat(sessionIdRef.current, text);
+    setSending(false);
+
+    const replyContent = result.success && result.data
+      ? result.data.answer
+      : result.error?.message ?? '답변을 가져오지 못했습니다.';
+
+    setMessages((prev) => [...prev, {
+      id: uid(),
+      role: 'assistant',
+      content: replyContent,
+      timestamp: nowStr(),
+    }]);
   }
 
   return (
     <div className="la-root">
-      {/* ── Top bar ── */}
       <div className="la-topbar">
         <div className="la-topbar-left">
           <FileCode2 size={16} style={{ color: 'var(--accent-hover)' }} />
@@ -286,11 +461,7 @@ export default function LegacyAnalysis() {
               onChange={(e) => setCodePath(e.target.value)}
               placeholder="분석할 코드 경로를 입력하세요 (예: C:/projects/legacy-app)"
             />
-            <button
-              className="la-path-browse"
-              onClick={handlePickDirectory}
-              title="폴더 선택"
-            >
+            <button className="la-path-browse" onClick={handlePickDirectory} title="폴더 선택">
               <FolderSearch size={15} />
             </button>
           </div>
@@ -299,41 +470,37 @@ export default function LegacyAnalysis() {
             onClick={handleAnalyze}
             disabled={!codePath.trim() || status === 'analyzing'}
           >
-            {status === 'analyzing' ? (
-              <><Loader2 size={13} className="animate-spin" /> 분석 중...</>
-            ) : (
-              <><Play size={13} /> 분석 시작</>
-            )}
+            {status === 'analyzing'
+              ? <><Loader2 size={13} className="animate-spin" /> 분석 중...</>
+              : <><Play size={13} /> 분석 시작</>
+            }
           </button>
         </div>
+        {errorMsg && (
+          <div className="la-error-bar">
+            <AlertCircle size={13} />
+            <span>{errorMsg}</span>
+          </div>
+        )}
       </div>
 
-      {/* ── Body: analysis | chat ── */}
       <div className="la-body">
-        {/* Analysis result */}
         <div className="la-result-panel">
           <div className="la-panel-header">
             <FileCode2 size={13} />
             <span>분석 결과</span>
           </div>
           <div className="la-result-scroll">
-            {status === 'analyzing' ? (
-              <div className="la-empty">
-                <Loader2 size={32} className="animate-spin" style={{ opacity: 0.3 }} />
-                <p>코드를 분석하는 중입니다...</p>
-              </div>
-            ) : (
-              <AnalysisResultPanel sections={sections} />
-            )}
+            <AnalysisResultPanel sections={sections} status={status} progressLogs={progressLogs} />
           </div>
         </div>
 
-        {/* Chat panel */}
         <div className="la-chat-panel">
           <ChatPanel
             messages={messages}
             onSend={handleChatSend}
             disabled={status !== 'done'}
+            sending={sending}
           />
         </div>
       </div>

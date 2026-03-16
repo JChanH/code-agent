@@ -2,6 +2,7 @@
 
 from app.api.agent import agent_router
 from app.api.git import git_router
+from app.api.legacy import legacy_router
 from app.api.projects import projects_router
 from app.api.specs import project_specs_router, specs_router
 from app.api.tasks import project_tasks_router, tasks_router
@@ -18,4 +19,5 @@ __all__ = [
     "specs_router",
     "git_router",
     "agent_router",
+    "legacy_router",
 ]
