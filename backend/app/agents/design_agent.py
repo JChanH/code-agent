@@ -14,7 +14,7 @@ from app.repositories import spec_repository, project_repository
 from app.websocket import ws_manager
 from app.utils.db_handler_sqlalchemy import db_conn
 from app.agents.prompts import load_prompt, load_text
-from app.agents.guidemap_agent import guidemap_exists, _get_guidemap_path
+from app.agents.guidemap_agent import guidemap_exists, get_design_context
 
 # 가이드라인 파일 경로 (agents/guidemap/PYTHON_FASTAPI_BACKEND_GUIDELINE.md)
 _GUIDELINE_PATH = Path(__file__).parent / "guidemap" / "PYTHON_FASTAPI_BACKEND_GUIDELINE.md"
@@ -117,12 +117,11 @@ def _get_stack_context(project: Project) -> str:
             
         # 기존 프로젝트의 경우, 별도로 생성된 guideline을 참고합니다
         if guidemap_exists(project.name):
-            guidemap_path = _get_guidemap_path(project.name)
+            design_context = get_design_context(project.name)
             return (
                 f"- This is an existing FastAPI project.\n"
-                f"- A pre-generated guidemap is available at `{guidemap_path}`.\n"
-                f"- Read this guidemap FIRST before exploring the codebase directly.\n"
-                f"- Follow the layer structure, naming conventions, and patterns described in the guidemap.\n"
+                f"- Follow the project guide below:\n\n"
+                f"{design_context}\n"
             )
         return (
             "- This is an existing FastAPI project\n"

@@ -10,6 +10,7 @@ from claude_agent_sdk import query, ClaudeAgentOptions
 
 from app.models import Task, Project
 from app.agents.prompts import load_prompt
+from app.agents.guidemap_agent import guidemap_exists, _get_guidemap_path
 
 logger = logging.getLogger(__name__)
 
@@ -34,15 +35,15 @@ def _build_prompt(task: Task, project: Project, review_context: dict | None = No
         )
 
     guideline_section = ""
-    if (
-        project.project_stack == "python"
-        and project.framework == "fastapi"
-        and project.project_type == "new"
-    ):
-        guideline_section = (
-            f"\n## Framework Guideline\n"
-            f"Read `{_GUIDELINE_PATH}` using the Read tool and follow its rules.\n"
-        )
+    if project.project_stack == "python" and project.framework == "fastapi":
+        if project.project_type == "new":
+            guideline_section = (
+                f"\n## Framework Guideline\n"
+                f"Read `{_GUIDELINE_PATH}` using the Read tool and follow its rules.\n"
+            )
+        elif guidemap_exists(project.name):
+            guidemap_content = _get_guidemap_path(project.name).read_text(encoding="utf-8")
+            guideline_section = f"\n## Project Guide\n{guidemap_content}\n"
 
     target_files_section = ""
     if task.target_files:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 
 from claude_agent_sdk import query, ClaudeAgentOptions
@@ -22,6 +23,23 @@ def _get_guidemap_path(project_name: str) -> Path:
 
 def guidemap_exists(project_name: str) -> bool:
     return _get_guidemap_path(project_name).exists()
+
+
+_DESIGN_SECTIONS = {"## Directory Guide", "## Naming Conventions"}
+
+
+def get_design_context(project_name: str) -> str | None:
+    """design agent용 섹션(Directory Guide, Naming Conventions)만 추출해서 반환."""
+    path = _get_guidemap_path(project_name)
+    if not path.exists():
+        return None
+    content = path.read_text(encoding="utf-8")
+    parts = re.split(r"^(## .+)$", content, flags=re.MULTILINE)
+    result = [parts[0]]  # h1 title
+    for i in range(1, len(parts) - 1, 2):
+        if parts[i].strip() in _DESIGN_SECTIONS:
+            result.append(parts[i] + parts[i + 1])
+    return "".join(result)
 
 
 def _build_prompt(project: Project) -> str:
