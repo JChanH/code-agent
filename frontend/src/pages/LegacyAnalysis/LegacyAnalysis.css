@@ -1,0 +1,403 @@
+/* ── LegacyAnalysis Page ──────────────────────────────────────────────────── */
+
+.la-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── Top bar ─────────────────────────────────────────────────────────────── */
+
+.la-topbar {
+  flex-shrink: 0;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 20px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.la-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.la-topbar-left h2 {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.la-path-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.la-path-input-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.la-path-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 7px 10px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.la-path-input:focus {
+  border-color: transparent;
+  outline: none;
+}
+
+.la-path-input-wrap:focus-within {
+  border-color: var(--accent);
+}
+
+.la-path-browse {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  height: 100%;
+  border-left: 1px solid var(--border);
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.la-path-browse:hover {
+  color: var(--text);
+  background: var(--bg);
+}
+
+.la-analyze-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  background: var(--accent);
+  color: white;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.la-analyze-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.la-analyze-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Status badges ───────────────────────────────────────────────────────── */
+
+.la-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.la-badge--analyzing {
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--accent-hover);
+}
+
+.la-badge--done {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--success);
+}
+
+.la-badge--error {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--danger);
+}
+
+/* ── Body layout ─────────────────────────────────────────────────────────── */
+
+.la-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  overflow: hidden;
+}
+
+/* ── Analysis result panel ───────────────────────────────────────────────── */
+
+.la-result-panel {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.la-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--bg-2);
+}
+
+.la-result-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+}
+
+.la-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 100%;
+  min-height: 200px;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ── Analysis sections ───────────────────────────────────────────────────── */
+
+.la-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.la-section {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.la-section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  width: 100%;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  background: transparent;
+  transition: background 0.1s;
+}
+
+.la-section-header:hover {
+  background: var(--bg-3);
+}
+
+.la-chevron {
+  color: var(--text-muted);
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+
+.la-chevron.open {
+  transform: rotate(90deg);
+}
+
+.la-section-body {
+  border-top: 1px solid var(--border);
+  padding: 12px 14px;
+}
+
+.la-section-body pre {
+  font-family: 'Consolas', 'Fira Code', monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ── Chat panel ──────────────────────────────────────────────────────────── */
+
+.la-chat-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.la-chat {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.la-chat-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--bg-2);
+}
+
+.la-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.la-chat-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* ── Chat messages ───────────────────────────────────────────────────────── */
+
+.la-msg {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.la-msg--user {
+  flex-direction: row-reverse;
+}
+
+.la-msg-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+.la-msg--user .la-msg-avatar {
+  background: var(--accent);
+  color: white;
+}
+
+.la-msg--assistant .la-msg-avatar {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.la-msg-body {
+  max-width: 80%;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.la-msg--user .la-msg-body {
+  align-items: flex-end;
+}
+
+.la-msg-content {
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.la-msg--user .la-msg-content {
+  background: var(--accent);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.la-msg--assistant .la-msg-content {
+  background: var(--bg-3);
+  color: var(--text);
+  border-bottom-left-radius: 4px;
+}
+
+.la-msg-time {
+  font-size: 10px;
+  color: var(--text-muted);
+  padding: 0 4px;
+}
+
+/* ── Chat input ──────────────────────────────────────────────────────────── */
+
+.la-chat-input {
+  flex-shrink: 0;
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-2);
+  align-items: flex-end;
+}
+
+.la-chat-input textarea {
+  flex: 1;
+  resize: none;
+  font-size: 13px;
+  line-height: 1.5;
+  border-radius: 8px;
+  padding: 8px 10px;
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+.la-send-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: white;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.la-send-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.la-send-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

@@ -33,7 +33,7 @@ export type SpecStatus = 'uploaded' | 'analyzing' | 'final_confirmed';
 
 export type WorktreeStatus = 'active' | 'inactive' | 'archived';
 
-export type ActiveTab = 'dashboard' | 'design' | 'dev' | 'console' | 'git' | 'settings';
+export type ActiveTab = 'dashboard' | 'design' | 'dev' | 'console' | 'git' | 'settings' | 'legacy';
 
 // ── Domain Models ─────────────────────────────────────────────────────────────
 

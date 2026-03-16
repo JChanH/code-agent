@@ -11,6 +11,7 @@ const DevPhase = lazy(() => import('./pages/DevPhase'));
 const GitManagement = lazy(() => import('./pages/GitManagement'));
 const ConsolePage = lazy(() => import('./pages/Console'));
 const SettingsPage = lazy(() => import('./pages/Settings'));
+const LegacyAnalysis = lazy(() => import('./pages/LegacyAnalysis'));
 
 // ── Header ────────────────────────────────────────────────────────────────────
 
@@ -125,6 +126,15 @@ function BottomPanel() {
 function MainContent() {
   const { selectedProjectId, activeTab } = useAppStore();
   useWebSocket(selectedProjectId);
+
+  // Legacy analysis is project-independent
+  if (activeTab === 'legacy') {
+    return (
+      <Suspense fallback={<div className="loading">로딩 중...</div>}>
+        <LegacyAnalysis />
+      </Suspense>
+    );
+  }
 
   if (!selectedProjectId) {
     return (

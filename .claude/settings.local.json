@@ -37,7 +37,8 @@
       "Bash(find /c/workspace/auto_code_demo/agent_practice/code-agent/backend/app -type d -not -path */__pycache__)",
       "Bash(for dir:*)",
       "Bash(do echo:*)",
-      "Bash(ls -la /c/workspace/auto_code_demo/agent_practice/code-agent/backend/app/agents/*.py)"
+      "Bash(ls -la /c/workspace/auto_code_demo/agent_practice/code-agent/backend/app/agents/*.py)",
+      "Bash(find /c/workspace/auto_code_demo/agent_practice/code-agent/backend/app/agents/prompts -type f -name *.md -o -name *.txt)"
     ]
   }
 }
