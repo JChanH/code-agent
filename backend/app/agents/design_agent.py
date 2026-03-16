@@ -104,15 +104,18 @@ TASK_LIST_SCHEMA: dict[str, Any] = {
 
 
 def _get_stack_context(project: Project) -> str:
-    """Returns additional context based on the project stack."""
+
+    # 파이썬 + fastapi의 경우    
     if project.project_stack == "python" and project.framework == "fastapi":
+        # 신규 프로젝트의 경우 fastapi_new_project.md의 규율을 따른다()
         if project.project_type == "new":
             summary = load_text("fastapi_new_project.md")
             return (
                 f"- This is a new FastAPI project. Review the key rules summary below,"
-                f" then read `{_GUIDELINE_PATH}` via the Read tool for full details.\n"
                 f"{summary}"
             )
+            
+        # 기존 프로젝트의 경우, 별도로 생성된 guideline을 참고합니다
         if project.local_repo_path and guidemap_exists(project.local_repo_path):
             guidemap_path = _get_guidemap_path(project.local_repo_path)
             return (
@@ -293,9 +296,10 @@ async def analyze_spec_and_create_tasks(spec_id: str) -> None:
         prompt = _build_prompt(spec_content, project)
 
         options = ClaudeAgentOptions(
+            model="claude-haiku-4-5-20251001",
             allowed_tools=["Read", "Glob", "Grep"],
             permission_mode="bypassPermissions",
-            max_turns=30,
+            max_turns=10,
             output_format={"type": "json_schema", "schema": TASK_LIST_SCHEMA},
         )
 

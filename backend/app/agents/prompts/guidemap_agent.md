@@ -22,35 +22,34 @@ The markdown must contain these sections:
 ```
 # Existing Project Guide
 
-## Layer Structure
-Describe the call chain (e.g. router → service → repository → model).
-List the directory that corresponds to each layer.
+## Directory Guide
+For each directory in the project, describe what type of code belongs there.
+Format: `relative/path/` — what goes here (e.g. `router/` — HTTP route handlers)
 
 ## Naming Conventions
 - File naming (e.g. snake_case, suffix rules like _service.py, _router.py)
 - Class naming
 - Method naming
 
-## Existing Endpoints
-List all HTTP endpoints found in the codebase.
-Format: `METHOD /path — brief description`
-
 ## Response Format
-Show the standard response wrapper structure with field names and types.
-Include a concrete example.
+- Class name and location of the response wrapper
+- Field names and their purpose (success, data, error, etc.)
+- How to construct success/error responses (method names only, no code blocks)
 
 ## Exception Handling
-- Base exception class name and location
-- How error codes are defined
-- How exceptions are raised and caught
+- Base exception class name, location, and constructor signature (one line)
+- Pattern for raising exceptions (e.g. "raise directly in service/repository")
+- Do NOT list individual exception subclasses
 
 ## DB / ORM Patterns
 - ORM library in use
-- Session/transaction management pattern
-- Repository pattern details (if any)
+- Transaction pattern: describe in one sentence (e.g. "async with db_conn.transaction() as session")
+- Repository pattern: static methods or instance, flush vs commit rule
 
 ## Key Files Reference
-List the most important files with their relative paths and one-line descriptions.
+List only core infrastructure files (max 10) with relative paths and one-line descriptions.
+Include: entry point, config, shared base classes, response wrapper, DB utility.
+Exclude: all domain-specific routers, services, repositories, agents.
 ```
 
 ## Rules
