@@ -47,6 +47,7 @@ async def delete_task(task_id: str) -> None:
         task_repository.delete(task, session)
 
 
+# 작업에서 변경된 부분 조회
 async def get_task_changes(task_id: str) -> dict:
     task = await get_task(task_id)
     if not task.git_commit_hash:

@@ -295,7 +295,7 @@ async def analyze_spec_and_create_tasks(spec_id: str) -> None:
         prompt = _build_prompt(spec_content, project)
 
         options = ClaudeAgentOptions(
-            model="claude-opus-4-6",
+            model="claude-sonnet-4-6",
             allowed_tools=["Read", "Glob", "Grep"],
             permission_mode="bypassPermissions",
             max_turns=10,

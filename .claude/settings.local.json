@@ -33,7 +33,11 @@
       "Bash(find /c/workspace/auto_code_demo/agent_practice/code-agent/backend/app/services -name \"*.py\" -exec wc -l {} +)",
       "Bash(wc -l /c/workspace/auto_code_demo/agent_practice/code-agent/backend/app/agents/prompts/*.md)",
       "Bash(grep -r \"max_turns\\\\|max_concurrent\\\\|pool_size\\\\|timeout\" /c/workspace/auto_code_demo/agent_practice/code-agent/backend/app --include=*.py)",
-      "Bash(wc -l c:workspaceauto_code_demoagent_practicecode-agentbackendapp/**/*.py)"
+      "Bash(wc -l c:workspaceauto_code_demoagent_practicecode-agentbackendapp/**/*.py)",
+      "Bash(find /c/workspace/auto_code_demo/agent_practice/code-agent/backend/app -type d -not -path */__pycache__)",
+      "Bash(for dir:*)",
+      "Bash(do echo:*)",
+      "Bash(ls -la /c/workspace/auto_code_demo/agent_practice/code-agent/backend/app/agents/*.py)"
     ]
   }
 }

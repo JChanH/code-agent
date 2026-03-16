@@ -87,6 +87,7 @@ class GitService:
             cwd=self.worktree_path,
             capture_output=True,
             text=True,
+            encoding="utf-8",
             check=check,
         )
 
@@ -182,8 +183,8 @@ class GitService:
         return result.stdout.strip()
 
     def get_commit_diff(self, commit_hash: str) -> str:
-        """Return the full diff for a specific commit (git show)."""
-        result = self._run(["show", commit_hash, "--patch", "--format="], check=False)
+        """Return the full diff for a specific commit."""
+        result = self._run(["diff", f"{commit_hash}~1", commit_hash], check=False)
         return result.stdout
 
     def get_commit_files(self, commit_hash: str) -> list[dict]:
