@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FolderOpen, GitBranch, Layers, Settings, Plus, Code2, Terminal, X, FolderSearch, Loader2, Search } from "lucide-react";
+import { FolderOpen, GitBranch, Layers, Settings, Plus, Code2, Terminal, X, FolderSearch, Loader2, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAppStore } from "../../stores";
 import { createProject } from "../../api/project/projectApis";
 import type { ProjectCreate, ProjectType } from "../../api/project/projectTypes";
@@ -147,7 +147,7 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
   );
 }
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onToggle }: { isOpen: boolean; onToggle: () => void }) {
   const { projects, selectedProjectId, activeTab, selectProject, setActiveTab, guidemapGeneratingProjectIds } = useAppStore();
   const [showModal, setShowModal] = useState(false);
 
@@ -157,39 +157,62 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="app-sidebar">
-      <div className="sidebar-section">
-        <div className="sidebar-section-title">
-          <span>프로젝트</span>
-          <button onClick={() => setShowModal(true)} title="새 프로젝트"><Plus size={13} /></button>
-        </div>
-        <ul className="sidebar-list">
-          {projects.map((p) => {
-            const isGenerating = guidemapGeneratingProjectIds.has(p.id);
-            return (
-              <li key={p.id} className={"sidebar-item " + (p.id === selectedProjectId ? "active" : "")} onClick={() => selectProject(p.id)}>
-                {isGenerating
-                  ? <Loader2 size={14} style={{ flexShrink: 0 }} className="animate-spin" />
-                  : <FolderOpen size={14} style={{ flexShrink: 0 }} />
-                }
-                <span>{p.name}</span>
-                {isGenerating && <span style={{ fontSize: 11, opacity: 0.6, marginLeft: "auto" }}>가이드맵 생성 중</span>}
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-      <div className="sidebar-section">
-        <div className="sidebar-section-title"><span>메뉴</span></div>
-        <ul className="sidebar-list">
-          {TABS.map((tab, i) => (
-            <li key={tab.id} className={"sidebar-item " + (activeTab === tab.id && (selectedProjectId || tab.id === "legacy") ? "active" : "")} onClick={() => handleTabClick(tab.id)}>
+    <aside className={`app-sidebar${isOpen ? "" : " app-sidebar--collapsed"}`}>
+      {isOpen && (
+        <>
+          <div className="sidebar-section">
+            <div className="sidebar-section-title">
+              <span>프로젝트</span>
+              <button onClick={() => setShowModal(true)} title="새 프로젝트"><Plus size={13} /></button>
+            </div>
+            <ul className="sidebar-list">
+              {projects.map((p) => {
+                const isGenerating = guidemapGeneratingProjectIds.has(p.id);
+                return (
+                  <li key={p.id} className={"sidebar-item " + (p.id === selectedProjectId ? "active" : "")} onClick={() => selectProject(p.id)}>
+                    {isGenerating
+                      ? <Loader2 size={14} style={{ flexShrink: 0 }} className="animate-spin" />
+                      : <FolderOpen size={14} style={{ flexShrink: 0 }} />
+                    }
+                    <span>{p.name}</span>
+                    {isGenerating && <span style={{ fontSize: 11, opacity: 0.6, marginLeft: "auto" }}>가이드맵 생성 중</span>}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+          <div className="sidebar-section">
+            <div className="sidebar-section-title"><span>메뉴</span></div>
+            <ul className="sidebar-list">
+              {TABS.map((tab, i) => (
+                <li key={tab.id} className={"sidebar-item " + (activeTab === tab.id && (selectedProjectId || tab.id === "legacy") ? "active" : "")} onClick={() => handleTabClick(tab.id)}>
+                  <span style={{ flexShrink: 0, display: "flex" }}>{tab.icon}</span>
+                  <span>{i + 1}. {tab.label}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
+      )}
+
+      {!isOpen && (
+        <ul className="sidebar-list" style={{ paddingTop: 4 }}>
+          {TABS.map((tab) => (
+            <li
+              key={tab.id}
+              className={"sidebar-item sidebar-item--icon " + (activeTab === tab.id && (selectedProjectId || tab.id === "legacy") ? "active" : "")}
+              onClick={() => handleTabClick(tab.id)}
+              title={tab.label}
+            >
               <span style={{ flexShrink: 0, display: "flex" }}>{tab.icon}</span>
-              <span>{i + 1}. {tab.label}</span>
             </li>
           ))}
         </ul>
-      </div>
+      )}
+
+      <button className="sidebar-toggle-btn" onClick={onToggle} title={isOpen ? "사이드바 닫기" : "사이드바 열기"}>
+        {isOpen ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+      </button>
 
       {showModal && (
         <NewProjectModal

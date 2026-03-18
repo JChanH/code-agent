@@ -165,6 +165,7 @@ function MainContent() {
 
 export default function App() {
   const { setProjects, selectProject } = useAppStore();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // 프로젝트 조회
   useEffect(() => {
@@ -177,9 +178,12 @@ export default function App() {
   }, []);
 
   return (
-    <div className="app-shell">
+    <div
+      className="app-shell"
+      style={{ gridTemplateColumns: sidebarOpen ? 'var(--sidebar-w) 1fr' : '40px 1fr' }}
+    >
       <AppHeader />
-      <Sidebar />
+      <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(v => !v)} />
       <main className="app-main">
         <MainContent />
       </main>

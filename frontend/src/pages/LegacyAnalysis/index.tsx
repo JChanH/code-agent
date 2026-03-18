@@ -1,21 +1,20 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   FolderSearch,
-  Play,
   Send,
   FileCode2,
   MessageSquare,
   ChevronRight,
+  ChevronLeft,
   Loader2,
   AlertCircle,
-  CheckCircle2,
   Bot,
   User,
-  Terminal,
+  Folder,
+  FolderOpen,
+  File as FileIcon,
 } from 'lucide-react';
-import { startAnalysis, sendChat, type AnalysisSection } from '../../api/legacy/legacyApis';
-import { WebSocketClient } from '../../services/websocket';
-import type { WsMessage } from '../../types';
+import { sendChat, listFiles, type FileNode } from '../../api/legacy/legacyApis';
 import './LegacyAnalysis.css';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -27,8 +26,6 @@ interface ChatMessage {
   timestamp: string;
 }
 
-type AnalysisStatus = 'idle' | 'analyzing' | 'done' | 'error';
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function nowStr() {
@@ -39,233 +36,207 @@ function uid() {
   return Math.random().toString(36).slice(2);
 }
 
-function makeSessionId() {
-  return `legacy-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+function resolvePath(filePath: string, codePath: string): string {
+  if (/^[A-Za-z]:/.test(filePath) || filePath.startsWith('/')) return filePath;
+  return `${codePath.replace(/[/\\]+$/, '')}/${filePath}`;
 }
 
-/** SDK agent_message에서 사람이 읽을 수 있는 한 줄 텍스트 추출 (stores/index.ts formatAgentMessage 동일 로직) */
-function extractLogLine(raw: unknown): string | null {
-  if (!raw || typeof raw !== 'object') return typeof raw === 'string' ? raw : null;
-  const m = raw as Record<string, unknown>;
+// ── MessageContent: 마크다운 렌더링 + 파일 경로 클릭 ─────────────────────────
 
-  // AssistantMessage: { role: "assistant", content: [...] }
-  if (m.role === 'assistant' && Array.isArray(m.content)) {
-    const parts: string[] = [];
-    for (const block of m.content as Record<string, unknown>[]) {
-      if (block.type === 'text' && typeof block.text === 'string') {
-        const snippet = block.text.trim().split('\n')[0].slice(0, 100);
-        if (snippet) parts.push(snippet);
-      } else if (block.type === 'tool_use' && typeof block.name === 'string') {
-        const input = block.input as Record<string, unknown> | undefined;
-        const detail = input
-          ? (Object.values(input).find((v) => typeof v === 'string') as string ?? '')
-          : '';
-        parts.push(`[${block.name}] ${detail}`);
+function isFilePath(s: string): boolean {
+  return /\.\w{1,10}$/.test(s);
+}
+
+function renderInline(
+  text: string,
+  keyPrefix: string,
+  onOpenFile: (path: string, line?: number) => void,
+): React.ReactNode {
+  const segments: React.ReactNode[] = [];
+  const re = /(\*\*[^*\n]+\*\*)|(`[^`\n]+`)/g;
+  let last = 0;
+  let match: RegExpExecArray | null;
+
+  re.lastIndex = 0;
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > last) segments.push(text.slice(last, match.index));
+    const part = match[0];
+
+    if (part.startsWith('**')) {
+      segments.push(<strong key={`${keyPrefix}b${match.index}`}>{part.slice(2, -2)}</strong>);
+    } else {
+      const inner = part.slice(1, -1);
+      const rangeMatch = inner.match(/^(.+?):(\d+)(?:-\d+)?$/);
+      const filePath = rangeMatch ? rangeMatch[1] : inner;
+      const line = rangeMatch ? parseInt(rangeMatch[2]) : undefined;
+
+      if (isFilePath(filePath)) {
+        segments.push(
+          <button
+            key={`${keyPrefix}f${match.index}`}
+            className="msg-file-link"
+            onClick={() => onOpenFile(filePath, line)}
+            title={`파일 트리에서 보기: ${inner}`}
+          >
+            {part}
+          </button>
+        );
+      } else {
+        segments.push(<code key={`${keyPrefix}c${match.index}`} className="msg-inline-code">{inner}</code>);
       }
     }
-    return parts.join(' | ') || null;
+    last = match.index + part.length;
   }
-
-  // ResultMessage: { result: "..." }
-  if (typeof m.result === 'string' && m.result.length > 0) {
-    return `완료: ${m.result.split('\n')[0].slice(0, 100)}`;
-  }
-
-  return null;
+  if (last < text.length) segments.push(text.slice(last));
+  return <>{segments}</>;
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-function StatusBadge({ status }: { status: AnalysisStatus }) {
-  if (status === 'idle') return null;
-  if (status === 'analyzing')
-    return (
-      <span className="la-badge la-badge--analyzing">
-        <Loader2 size={12} className="animate-spin" />
-        분석 중
-      </span>
-    );
-  if (status === 'done')
-    return (
-      <span className="la-badge la-badge--done">
-        <CheckCircle2 size={12} />
-        분석 완료
-      </span>
-    );
-  return (
-    <span className="la-badge la-badge--error">
-      <AlertCircle size={12} />
-      오류
-    </span>
-  );
-}
-
-function ProgressLog({ logs }: { logs: string[] }) {
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [logs]);
-
-  return (
-    <div className="la-progress-log">
-      <div className="la-progress-log-header">
-        <Terminal size={12} />
-        <span>에이전트 진행 상황</span>
-        <Loader2 size={12} className="animate-spin" style={{ marginLeft: 'auto' }} />
-      </div>
-      <div className="la-progress-log-body">
-        {logs.length === 0 && (
-          <span className="la-progress-line la-progress-line--muted">에이전트 시작 중...</span>
-        )}
-        {logs.map((line, i) => (
-          <div key={i} className="la-progress-line">{line}</div>
-        ))}
-        <div ref={bottomRef} />
-      </div>
-    </div>
-  );
-}
-
-// ── Smart Content Renderer ────────────────────────────────────────────────────
-
-const METHOD_COLORS: Record<string, string> = {
-  get: '#22c55e',
-  post: '#3b82f6',
-  put: '#f59e0b',
-  delete: '#ef4444',
-  patch: '#a78bfa',
-};
-
-function SmartContent({ content }: { content: string }) {
-  const lines = content.split('\n');
-  const elements: React.ReactNode[] = [];
-
-  lines.forEach((line, i) => {
-    // 그룹 헤더: 【...】
-    const groupMatch = line.match(/^【(.+)】$/);
-    if (groupMatch) {
-      elements.push(
-        <div key={i} className="sc-group-header">{groupMatch[1]}</div>
-      );
-      return;
-    }
-
-    // HTTP 메서드 라인: "  GET   /path   - 설명"
-    const methodMatch = line.match(/^\s+(GET|POST|PUT|DELETE|PATCH)\s+(\S+)\s+-\s*(.+)$/);
-    if (methodMatch) {
-      const [, method, path, desc] = methodMatch;
-      const color = METHOD_COLORS[method.toLowerCase()] ?? '#6b7280';
-      elements.push(
-        <div key={i} className="sc-api-row">
-          <span className="sc-method" style={{ color, borderColor: color }}>{method}</span>
-          <code className="sc-path">{path}</code>
-          <span className="sc-desc">{desc}</span>
-        </div>
-      );
-      return;
-    }
-
-    // 번호 단계: "1. [레이어] 설명" 또는 "1. 설명"
-    const stepMatch = line.match(/^(\d+)\.\s+(\[.+?\])?\s*(.+)$/);
-    if (stepMatch) {
-      const [, num, label, desc] = stepMatch;
-      elements.push(
-        <div key={i} className="sc-step">
-          <span className="sc-step-num">{num}</span>
-          <span className="sc-step-body">
-            {label && <span className="sc-step-label">{label}</span>}
-            {desc}
-          </span>
-        </div>
-      );
-      return;
-    }
-
-    // 들여쓰기 불릿/화살표: "  - " or "  → "
-    const bulletMatch = line.match(/^\s{2,}[-→]\s+(.+)$/);
-    if (bulletMatch) {
-      elements.push(
-        <div key={i} className="sc-bullet">· {bulletMatch[1]}</div>
-      );
-      return;
-    }
-
-    // 빈 줄
-    if (line.trim() === '') {
-      elements.push(<div key={i} className="sc-spacer" />);
-      return;
-    }
-
-    // 기본 텍스트
-    elements.push(<div key={i} className="sc-text">{line}</div>);
-  });
-
-  return <div className="sc-root">{elements}</div>;
-}
-
-// ── Analysis Result Panel ─────────────────────────────────────────────────────
-
-function AnalysisResultPanel({
-  sections,
-  status,
-  progressLogs,
+function MessageContent({
+  content,
+  onOpenFile,
 }: {
-  sections: AnalysisSection[];
-  status: AnalysisStatus;
-  progressLogs: string[];
+  content: string;
+  onOpenFile: (path: string, line?: number) => void;
 }) {
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-
-  function toggle(title: string) {
-    setExpanded((prev) => ({ ...prev, [title]: !prev[title] }));
-  }
-
-  if (status === 'analyzing') {
-    return <ProgressLog logs={progressLogs} />;
-  }
-
-  if (sections.length === 0) {
-    return (
-      <div className="la-empty">
-        <FileCode2 size={36} style={{ opacity: 0.15 }} />
-        <p>경로를 입력하고 분석을 시작하면 결과가 여기에 표시됩니다.</p>
-      </div>
-    );
-  }
+  const lines = content.split('\n');
 
   return (
-    <div className="la-sections">
-      {sections.map((sec) => {
-        const open = expanded[sec.title] !== false;
-        return (
-          <div key={sec.title} className="la-section">
-            <button className="la-section-header" onClick={() => toggle(sec.title)}>
-              <ChevronRight size={14} className={`la-chevron ${open ? 'open' : ''}`} />
-              <span>{sec.title}</span>
-            </button>
-            {open && (
-              <div className="la-section-body">
-                <SmartContent content={sec.content} />
-              </div>
-            )}
+    <div className="msg-md">
+      {lines.map((line, i) => {
+        const k = String(i);
+
+        const h4 = line.match(/^####\s*(.+)$/);
+        if (h4) return <div key={k} className="msg-h4">{renderInline(h4[1], k, onOpenFile)}</div>;
+
+        const h3 = line.match(/^###\s*(.+)$/);
+        if (h3) return <div key={k} className="msg-h3">{renderInline(h3[1], k, onOpenFile)}</div>;
+
+        const h2 = line.match(/^##\s*(.+)$/);
+        if (h2) return <div key={k} className="msg-h2">{renderInline(h2[1], k, onOpenFile)}</div>;
+
+        const h1 = line.match(/^#\s*(.+)$/);
+        if (h1) return <div key={k} className="msg-h1">{renderInline(h1[1], k, onOpenFile)}</div>;
+
+        const bullet = line.match(/^(\s*)[-*]\s+(.+)$/);
+        if (bullet) return (
+          <div key={k} className="msg-li" style={{ paddingLeft: `${bullet[1].length * 6 + 8}px` }}>
+            <span className="msg-li-marker">·</span>
+            {renderInline(bullet[2], k, onOpenFile)}
           </div>
         );
+
+        const numbered = line.match(/^(\s*)(\d+)\.\s+(.+)$/);
+        if (numbered) return (
+          <div key={k} className="msg-li" style={{ paddingLeft: `${numbered[1].length * 6 + 8}px` }}>
+            <span className="msg-li-marker">{numbered[2]}.</span>
+            {renderInline(numbered[3], k, onOpenFile)}
+          </div>
+        );
+
+        if (line.trim() === '') return <div key={k} className="msg-spacer" />;
+
+        return <div key={k}>{renderInline(line, k, onOpenFile)}</div>;
       })}
     </div>
   );
 }
 
+// ── usePanelResize ────────────────────────────────────────────────────────────
+
+function usePanelResize(initial: number, min: number, max: number) {
+  const [width, setWidth] = useState(initial);
+  const [dragging, setDragging] = useState(false);
+  const dragRef = useRef<{ startX: number; startWidth: number; dir: 1 | -1 } | null>(null);
+
+  useEffect(() => {
+    function onMove(e: MouseEvent) {
+      if (!dragRef.current) return;
+      const { startX, startWidth, dir } = dragRef.current;
+      setWidth(Math.max(min, Math.min(max, startWidth + (e.clientX - startX) * dir)));
+    }
+    function onUp() {
+      if (dragRef.current) { dragRef.current = null; setDragging(false); }
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+  }, [min, max]);
+
+  function startDrag(e: React.MouseEvent, dir: 1 | -1 = 1) {
+    dragRef.current = { startX: e.clientX, startWidth: width, dir };
+    setDragging(true);
+    e.preventDefault();
+  }
+
+  return { width, dragging, startDrag };
+}
+
+// ── File Tree ─────────────────────────────────────────────────────────────────
+
+function FileTreeNode({
+  node, expanded, onToggle, selected, depth,
+}: {
+  node: FileNode;
+  expanded: Set<string>;
+  onToggle: (path: string) => void;
+  selected: string | null;
+  depth: number;
+}) {
+  const isDir = node.type === 'directory';
+  const isOpen = expanded.has(node.path);
+  const isSelected = selected === node.path;
+
+  return (
+    <div>
+      <div
+        className={`ft-node${isSelected ? ' ft-node--selected' : ''}`}
+        style={{ paddingLeft: `${6 + depth * 14}px` }}
+        onClick={() => isDir && onToggle(node.path)}
+        title={node.name}
+      >
+        {isDir ? (
+          <>
+            <ChevronRight size={11} className={`ft-chevron${isOpen ? ' open' : ''}`} />
+            {isOpen
+              ? <FolderOpen size={13} className="ft-icon ft-icon--dir" />
+              : <Folder size={13} className="ft-icon ft-icon--dir" />
+            }
+          </>
+        ) : (
+          <>
+            <span className="ft-leaf-indent" />
+            <FileIcon size={12} className={`ft-icon ft-icon--file${isSelected ? ' ft-icon--selected' : ''}`} />
+          </>
+        )}
+        <span className="ft-name">{node.name}</span>
+      </div>
+      {isDir && isOpen && node.children?.map(child => (
+        <FileTreeNode
+          key={child.path}
+          node={child}
+          expanded={expanded}
+          onToggle={onToggle}
+          selected={selected}
+          depth={depth + 1}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ── Chat Panel ────────────────────────────────────────────────────────────────
+
 function ChatPanel({
-  messages,
-  onSend,
-  disabled,
-  sending,
+  messages, onSend, disabled, sending, onOpenFile,
 }: {
   messages: ChatMessage[];
   onSend: (text: string) => void;
   disabled: boolean;
   sending: boolean;
+  onOpenFile: (path: string, line?: number) => void;
 }) {
   const [input, setInput] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -298,7 +269,7 @@ function ChatPanel({
         {messages.length === 0 && (
           <div className="la-chat-empty">
             <Bot size={28} style={{ opacity: 0.2 }} />
-            <p>분석 후 코드에 대해 질문하세요.</p>
+            <p>경로를 입력하고 코드에 대해 질문하세요.</p>
           </div>
         )}
         {messages.map((msg) => (
@@ -307,7 +278,12 @@ function ChatPanel({
               {msg.role === 'user' ? <User size={13} /> : <Bot size={13} />}
             </div>
             <div className="la-msg-body">
-              <div className="la-msg-content">{msg.content}</div>
+              <div className="la-msg-content">
+                {msg.role === 'assistant'
+                  ? <MessageContent content={msg.content} onOpenFile={onOpenFile} />
+                  : msg.content
+                }
+              </div>
               <div className="la-msg-time">{msg.timestamp}</div>
             </div>
           </div>
@@ -329,7 +305,7 @@ function ChatPanel({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKey}
-          placeholder={disabled ? '분석이 완료된 후 질문할 수 있습니다.' : '코드에 대해 질문하세요... (Enter 전송)'}
+          placeholder={disabled ? '경로를 먼저 입력하세요.' : '코드에 대해 질문하세요... (Enter 전송)'}
           disabled={disabled || sending}
           rows={2}
         />
@@ -346,98 +322,88 @@ function ChatPanel({
   );
 }
 
-// ── Main Page ──────────────────────────────────────────────────────────────────
+// ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function LegacyAnalysis() {
   const [codePath, setCodePath] = useState('');
-  const [status, setStatus] = useState<AnalysisStatus>('idle');
-  const [sections, setSections] = useState<AnalysisSection[]>([]);
-  const [progressLogs, setProgressLogs] = useState<string[]>([]);
+  const [fileTree, setFileTree] = useState<FileNode | null>(null);
+  const [treeLoading, setTreeLoading] = useState(false);
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sending, setSending] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  const sessionIdRef = useRef<string>(makeSessionId());
-  const wsRef = useRef<WebSocketClient | null>(null);
+  const treePanel = usePanelResize(220, 120, 480);
+  const isResizing = treePanel.dragging;
 
-  const connectWs = useCallback((sessionId: string) => {
-    if (wsRef.current) wsRef.current.disconnect();
+  async function handleLoadTree(path: string) {
+    if (!path.trim()) return;
+    setTreeLoading(true);
+    setFileTree(null);
+    setSelectedFile(null);
+    setExpandedNodes(new Set());
+    setErrorMsg(null);
 
-    const ws = new WebSocketClient();
-    ws.connect(sessionId);
+    const result = await listFiles(path);
+    setTreeLoading(false);
 
-    ws.onMessage((msg: WsMessage) => {
-      // 백엔드 메시지는 flat 구조: { type, session_id, ...fields }
-      const raw = msg as unknown as Record<string, unknown>;
-
-      if (raw.type === 'agent_message') {
-        const line = extractLogLine(raw.message);
-        if (line) setProgressLogs((prev) => [...prev, line]);
-      } else if (raw.type === 'legacy_analyzed') {
-        const sections = (raw.sections as AnalysisSection[]) ?? [];
-        setSections(sections);
-        setStatus('done');
-        setMessages([{
-          id: uid(),
-          role: 'assistant',
-          content: '코드 분석이 완료되었습니다. 궁금한 점을 질문해 주세요.',
-          timestamp: nowStr(),
-        }]);
-        ws.disconnect();
-      } else if (raw.type === 'legacy_analyze_failed') {
-        setErrorMsg((raw.error as string) ?? '분석 중 오류가 발생했습니다.');
-        setStatus('error');
-        ws.disconnect();
-      }
-    });
-
-    wsRef.current = ws;
-  }, []);
-
-  useEffect(() => {
-    return () => { wsRef.current?.disconnect(); };
-  }, []);
+    if (result.success && result.data) {
+      const tree = result.data.tree;
+      setFileTree(tree);
+      setExpandedNodes(new Set([tree.path]));
+    } else {
+      setErrorMsg(result.error?.message ?? '디렉토리를 불러오지 못했습니다.');
+    }
+  }
 
   async function handlePickDirectory() {
     const path = await window.electronAPI?.openDirectory();
-    if (path) setCodePath(path);
+    if (path) {
+      setCodePath(path);
+      await handleLoadTree(path);
+    }
   }
 
-  async function handleAnalyze() {
-    if (!codePath.trim() || status === 'analyzing') return;
+  function handleToggleNode(path: string) {
+    setExpandedNodes(prev => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  }
 
-    const sessionId = makeSessionId();
-    sessionIdRef.current = sessionId;
+  /** 채팅 파일 링크 클릭 → 파일 트리에서 해당 파일 하이라이트 */
+  function handleOpenFile(filePath: string) {
+    const resolved = resolvePath(filePath, codePath).replace(/\\/g, '/');
+    setSelectedFile(resolved);
 
-    setStatus('analyzing');
-    setSections([]);
-    setProgressLogs([]);
-    setMessages([]);
-    setErrorMsg(null);
-
-    connectWs(sessionId);
-
-    const result = await startAnalysis(sessionId, codePath);
-    if (!result.success) {
-      setStatus('error');
-      setErrorMsg(result.error?.message ?? '분석 요청에 실패했습니다.');
-      wsRef.current?.disconnect();
-    }
+    // 상위 폴더를 모두 펼쳐서 파일이 보이도록
+    setExpandedNodes(prev => {
+      const next = new Set(prev);
+      const parts = resolved.split('/');
+      for (let i = 1; i < parts.length; i++) {
+        next.add(parts.slice(0, i).join('/'));
+      }
+      return next;
+    });
   }
 
   async function handleChatSend(text: string) {
     const userMsg: ChatMessage = { id: uid(), role: 'user', content: text, timestamp: nowStr() };
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages(prev => [...prev, userMsg]);
     setSending(true);
 
-    const result = await sendChat(sessionIdRef.current, text);
+    const result = await sendChat(codePath, text, selectedFile);
     setSending(false);
 
     const replyContent = result.success && result.data
       ? result.data.answer
       : result.error?.message ?? '답변을 가져오지 못했습니다.';
 
-    setMessages((prev) => [...prev, {
+    setMessages(prev => [...prev, {
       id: uid(),
       role: 'assistant',
       content: replyContent,
@@ -445,13 +411,15 @@ export default function LegacyAnalysis() {
     }]);
   }
 
+  const treeColWidth = sidebarOpen ? treePanel.width : 32;
+  const gridCols = `${treeColWidth}px 5px 1fr`;
+
   return (
-    <div className="la-root">
+    <div className={`la-root${isResizing ? ' la-root--resizing' : ''}`}>
       <div className="la-topbar">
         <div className="la-topbar-left">
           <FileCode2 size={16} style={{ color: 'var(--accent-hover)' }} />
           <h2>레거시 코드 분석</h2>
-          <StatusBadge status={status} />
         </div>
         <div className="la-path-row">
           <div className="la-path-input-wrap">
@@ -459,22 +427,13 @@ export default function LegacyAnalysis() {
               className="la-path-input"
               value={codePath}
               onChange={(e) => setCodePath(e.target.value)}
-              placeholder="분석할 코드 경로를 입력하세요 (예: C:/projects/legacy-app)"
+              onKeyDown={(e) => { if (e.key === 'Enter') handleLoadTree(codePath); }}
+              placeholder="코드 경로를 입력하고 Enter (예: C:/projects/legacy-app)"
             />
             <button className="la-path-browse" onClick={handlePickDirectory} title="폴더 선택">
               <FolderSearch size={15} />
             </button>
           </div>
-          <button
-            className="la-analyze-btn"
-            onClick={handleAnalyze}
-            disabled={!codePath.trim() || status === 'analyzing'}
-          >
-            {status === 'analyzing'
-              ? <><Loader2 size={13} className="animate-spin" /> 분석 중...</>
-              : <><Play size={13} /> 분석 시작</>
-            }
-          </button>
         </div>
         {errorMsg && (
           <div className="la-error-bar">
@@ -484,25 +443,63 @@ export default function LegacyAnalysis() {
         )}
       </div>
 
-      <div className="la-body">
-        <div className="la-result-panel">
-          <div className="la-panel-header">
-            <FileCode2 size={13} />
-            <span>분석 결과</span>
+      <div className="la-body" style={{ gridTemplateColumns: gridCols }}>
+
+        {/* File Tree Panel */}
+        <div className={`la-filetree-panel${sidebarOpen ? '' : ' la-filetree-panel--collapsed'}`}>
+          <div className="la-panel-header" style={{ overflow: 'hidden' }}>
+            {sidebarOpen && <><Folder size={13} /><span>파일 탐색기</span></>}
+            {treeLoading && <Loader2 size={11} className="animate-spin" style={{ marginLeft: 'auto' }} />}
+            <button
+              className="la-sidebar-toggle"
+              onClick={() => setSidebarOpen(v => !v)}
+              title={sidebarOpen ? '사이드바 닫기' : '사이드바 열기'}
+              style={{ marginLeft: sidebarOpen ? 'auto' : 0 }}
+            >
+              {sidebarOpen ? <ChevronLeft size={12} /> : <ChevronRight size={12} />}
+            </button>
           </div>
-          <div className="la-result-scroll">
-            <AnalysisResultPanel sections={sections} status={status} progressLogs={progressLogs} />
-          </div>
+          {sidebarOpen && (
+            <div className="la-filetree-scroll">
+              {!fileTree && !treeLoading && (
+                <div className="la-empty" style={{ minHeight: 120, fontSize: 12 }}>
+                  <Folder size={28} style={{ opacity: 0.15 }} />
+                  <p>경로를 입력하고 Enter를 누르세요.</p>
+                </div>
+              )}
+              {fileTree && (
+                <div className="ft-root">
+                  <FileTreeNode
+                    node={fileTree}
+                    expanded={expandedNodes}
+                    onToggle={handleToggleNode}
+                    selected={selectedFile}
+                    depth={0}
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
+        {/* Drag Handle */}
+        <div
+          className="la-drag-handle"
+          onMouseDown={(e) => sidebarOpen && treePanel.startDrag(e, 1)}
+          style={{ cursor: sidebarOpen ? 'col-resize' : 'default' }}
+        />
+
+        {/* Chat Panel */}
         <div className="la-chat-panel">
           <ChatPanel
             messages={messages}
             onSend={handleChatSend}
-            disabled={status !== 'done'}
+            disabled={!codePath.trim()}
             sending={sending}
+            onOpenFile={handleOpenFile}
           />
         </div>
+
       </div>
     </div>
   );

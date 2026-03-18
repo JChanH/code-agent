@@ -194,11 +194,98 @@
 .la-body {
   flex: 1;
   display: grid;
-  grid-template-columns: 1fr 360px;
   overflow: hidden;
 }
 
-/* ── Analysis result panel ───────────────────────────────────────────────── */
+/* Disable text selection and force col-resize cursor during drag */
+.la-root--resizing,
+.la-root--resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+/* ── File tree panel ─────────────────────────────────────────────────────── */
+
+.la-filetree-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Drag handles ────────────────────────────────────────────────────────── */
+
+.la-drag-handle {
+  position: relative;
+  background: var(--border);
+  transition: background 0.15s;
+  z-index: 10;
+}
+
+.la-drag-handle::after {
+  content: '';
+  position: absolute;
+  inset: 0 -3px;
+}
+
+.la-drag-handle:hover {
+  background: var(--accent);
+}
+
+.la-filetree-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.la-filetree-panel--collapsed {
+  overflow: hidden;
+}
+
+.la-filetree-panel--collapsed .la-panel-header {
+  padding: 8px 0;
+  justify-content: center;
+}
+
+.la-sidebar-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  color: var(--text-muted);
+  background: transparent;
+  flex-shrink: 0;
+  transition: background 0.1s, color 0.1s;
+}
+
+.la-sidebar-toggle:hover {
+  background: var(--bg-3);
+  color: var(--text);
+}
+
+/* ── Code viewer panel ───────────────────────────────────────────────────── */
+
+.la-code-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.la-code-panel-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 300px;
+}
+
+.la-code-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Analysis result panel (kept for future use) ─────────────────────────── */
 
 .la-result-panel {
   display: flex;
@@ -399,6 +486,138 @@
   color: var(--text-muted);
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* ── File tree nodes ─────────────────────────────────────────────────────── */
+
+.ft-root {
+  font-size: 12px;
+}
+
+.ft-node {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  cursor: pointer;
+  color: var(--text-muted);
+  border-radius: 4px;
+  margin: 0 4px;
+  padding-right: 8px;
+  user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.ft-node:hover {
+  background: var(--bg-3);
+  color: var(--text);
+}
+
+.ft-node--selected {
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--accent-hover);
+}
+
+.ft-node--selected:hover {
+  background: rgba(99, 102, 241, 0.2);
+}
+
+.ft-chevron {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  transition: transform 0.12s;
+}
+
+.ft-chevron.open {
+  transform: rotate(90deg);
+}
+
+.ft-icon {
+  flex-shrink: 0;
+}
+
+.ft-icon--dir {
+  color: #f59e0b;
+}
+
+.ft-icon--file {
+  color: var(--text-muted);
+}
+
+.ft-icon--selected {
+  color: var(--accent-hover);
+}
+
+.ft-leaf-indent {
+  display: inline-block;
+  width: 11px;
+  flex-shrink: 0;
+}
+
+.ft-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Chat message markdown rendering ─────────────────────────────────────── */
+
+.msg-md {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1.65;
+}
+
+.msg-h1 { font-size: 14px; font-weight: 700; margin-top: 10px; margin-bottom: 2px; color: var(--text); }
+.msg-h2 { font-size: 13px; font-weight: 700; margin-top: 8px; margin-bottom: 2px; color: var(--text); }
+.msg-h3 { font-size: 12px; font-weight: 600; margin-top: 6px; color: var(--text); }
+.msg-h4 { font-size: 12px; font-weight: 600; margin-top: 4px; color: var(--text-muted); }
+
+.msg-li {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.msg-li-marker {
+  color: var(--accent-hover);
+  flex-shrink: 0;
+  font-weight: 600;
+  min-width: 14px;
+}
+
+.msg-spacer { height: 5px; }
+
+/* Inline code (non-file-path) */
+.msg-inline-code {
+  font-family: 'Consolas', 'Fira Code', monospace;
+  font-size: 11px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  color: var(--text);
+}
+
+/* Clickable file path links */
+.msg-file-link {
+  display: inline;
+  font-family: 'Consolas', 'Fira Code', monospace;
+  font-size: 11px;
+  color: var(--accent-hover);
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 3px;
+  padding: 1px 5px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.msg-file-link:hover {
+  background: rgba(99, 102, 241, 0.22);
+  border-color: rgba(99, 102, 241, 0.6);
 }
 
 /* ── Chat panel ──────────────────────────────────────────────────────────── */
