@@ -620,6 +620,105 @@
   border-color: rgba(99, 102, 241, 0.6);
 }
 
+/* ── Monaco line highlight ───────────────────────────────────────────────── */
+
+.monaco-highlight-line {
+  background: rgba(99, 102, 241, 0.18) !important;
+  border-left: 2px solid rgba(99, 102, 241, 0.8);
+}
+
+/* ── Structured content ──────────────────────────────────────────────────── */
+
+.msg-structured {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.msg-summary {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  margin: 0 0 2px;
+}
+
+.msg-flow-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.msg-flow-step {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.msg-flow-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  color: inherit;
+}
+
+.msg-flow-card:hover {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.45);
+  transform: translateX(2px);
+}
+
+.msg-flow-card:active {
+  background: rgba(99, 102, 241, 0.14);
+  transform: translateX(1px);
+}
+
+.msg-flow-card-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 4px;
+}
+
+.msg-flow-index {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent-hover);
+  background: rgba(99, 102, 241, 0.15);
+  border-radius: 3px;
+  padding: 1px 5px;
+  flex-shrink: 0;
+  line-height: 1.6;
+}
+
+.msg-flow-point {
+  font-family: 'Consolas', 'Fira Code', monospace;
+  font-size: 11px;
+  color: var(--accent-hover);
+  word-break: break-all;
+}
+
+.msg-flow-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.msg-flow-arrow {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 2px 0;
+  opacity: 0.5;
+  user-select: none;
+}
+
 /* ── Chat panel ──────────────────────────────────────────────────────────── */
 
 .la-chat-panel {

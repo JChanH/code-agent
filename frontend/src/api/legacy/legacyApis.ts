@@ -5,6 +5,11 @@ export interface AnalysisSection {
   content: string;
 }
 
+export interface ChatFlowItem {
+  point: string;
+  내용: string;
+}
+
 export interface FileNode {
   name: string;
   path: string;
@@ -53,7 +58,7 @@ export async function sendChat(
   codePath: string,
   question: string,
   focusedFile?: string | null,
-): Promise<ApiResponse<{ code_path: string; answer: string }>> {
+): Promise<ApiResponse<{ code_path: string; answer: string; flow: ChatFlowItem[] }>> {
   try {
     const res = await client.post('/api/legacy/chat', {
       code_path: codePath,

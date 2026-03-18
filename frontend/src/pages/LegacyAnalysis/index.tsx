@@ -14,7 +14,9 @@ import {
   FolderOpen,
   File as FileIcon,
 } from 'lucide-react';
-import { sendChat, listFiles, type FileNode } from '../../api/legacy/legacyApis';
+import Editor from '@monaco-editor/react';
+import type { editor } from 'monaco-editor';
+import { sendChat, listFiles, readFile, type FileNode, type ChatFlowItem } from '../../api/legacy/legacyApis';
 import './LegacyAnalysis.css';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -23,6 +25,7 @@ interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  flow?: ChatFlowItem[];
   timestamp: string;
 }
 
@@ -34,6 +37,23 @@ function nowStr() {
 
 function uid() {
   return Math.random().toString(36).slice(2);
+}
+
+const EXT_LANG: Record<string, string> = {
+  py: 'python', js: 'javascript', jsx: 'javascript',
+  ts: 'typescript', tsx: 'typescript', json: 'json',
+  md: 'markdown', html: 'html', css: 'css', scss: 'scss',
+  yaml: 'yaml', yml: 'yaml', toml: 'toml',
+  sh: 'shell', bash: 'shell', sql: 'sql',
+  java: 'java', go: 'go', rs: 'rust',
+  cpp: 'cpp', c: 'c', h: 'c',
+  rb: 'ruby', php: 'php', xml: 'xml',
+  txt: 'plaintext', env: 'plaintext',
+};
+
+function getLanguage(filePath: string): string {
+  const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
+  return EXT_LANG[ext] ?? 'plaintext';
 }
 
 function resolvePath(filePath: string, codePath: string): string {
@@ -50,7 +70,7 @@ function isFilePath(s: string): boolean {
 function renderInline(
   text: string,
   keyPrefix: string,
-  onOpenFile: (path: string, line?: number) => void,
+  onOpenFile: (path: string, startLine?: number, endLine?: number) => void,
 ): React.ReactNode {
   const segments: React.ReactNode[] = [];
   const re = /(\*\*[^*\n]+\*\*)|(`[^`\n]+`)/g;
@@ -66,17 +86,18 @@ function renderInline(
       segments.push(<strong key={`${keyPrefix}b${match.index}`}>{part.slice(2, -2)}</strong>);
     } else {
       const inner = part.slice(1, -1);
-      const rangeMatch = inner.match(/^(.+?):(\d+)(?:-\d+)?$/);
+      const rangeMatch = inner.match(/^(.+?):(\d+)(?:-(\d+))?$/);
       const filePath = rangeMatch ? rangeMatch[1] : inner;
-      const line = rangeMatch ? parseInt(rangeMatch[2]) : undefined;
+      const startLine = rangeMatch ? parseInt(rangeMatch[2]) : undefined;
+      const endLine = rangeMatch?.[3] ? parseInt(rangeMatch[3]) : undefined;
 
       if (isFilePath(filePath)) {
         segments.push(
           <button
             key={`${keyPrefix}f${match.index}`}
             className="msg-file-link"
-            onClick={() => onOpenFile(filePath, line)}
-            title={`파일 트리에서 보기: ${inner}`}
+            onClick={() => onOpenFile(filePath, startLine, endLine)}
+            title={`파일 열기: ${inner}`}
           >
             {part}
           </button>
@@ -91,12 +112,54 @@ function renderInline(
   return <>{segments}</>;
 }
 
+// ── StructuredContent: flow JSON 렌더링 ──────────────────────────────────────
+
+function StructuredContent({
+  content,
+  flow,
+  onOpenFile,
+}: {
+  content: string;
+  flow: ChatFlowItem[];
+  onOpenFile: (path: string, startLine?: number, endLine?: number) => void;
+}) {
+  function handlePointClick(point: string) {
+    const m = point.match(/^(.+?):(\d+)(?:-(\d+))?$/);
+    if (m) onOpenFile(m[1], parseInt(m[2]), m[3] ? parseInt(m[3]) : undefined);
+    else onOpenFile(point);
+  }
+
+  return (
+    <div className="msg-structured">
+      {content && <p className="msg-summary">{content}</p>}
+      <div className="msg-flow-list">
+        {flow.map((item, i) => (
+          <div key={i} className="msg-flow-step">
+            <button
+              className="msg-flow-card"
+              onClick={() => handlePointClick(item.point)}
+              title={`파일 열기: ${item.point}`}
+            >
+              <div className="msg-flow-card-header">
+                <span className="msg-flow-index">{i + 1}</span>
+                <span className="msg-flow-point">{item.point}</span>
+              </div>
+              <p className="msg-flow-desc">{item['내용']}</p>
+            </button>
+            {i < flow.length - 1 && <div className="msg-flow-arrow">↓</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function MessageContent({
   content,
   onOpenFile,
 }: {
   content: string;
-  onOpenFile: (path: string, line?: number) => void;
+  onOpenFile: (path: string, startLine?: number, endLine?: number) => void;
 }) {
   const lines = content.split('\n');
 
@@ -177,11 +240,12 @@ function usePanelResize(initial: number, min: number, max: number) {
 // ── File Tree ─────────────────────────────────────────────────────────────────
 
 function FileTreeNode({
-  node, expanded, onToggle, selected, depth,
+  node, expanded, onToggle, onSelect, selected, depth,
 }: {
   node: FileNode;
   expanded: Set<string>;
   onToggle: (path: string) => void;
+  onSelect: (node: FileNode) => void;
   selected: string | null;
   depth: number;
 }) {
@@ -194,7 +258,7 @@ function FileTreeNode({
       <div
         className={`ft-node${isSelected ? ' ft-node--selected' : ''}`}
         style={{ paddingLeft: `${6 + depth * 14}px` }}
-        onClick={() => isDir && onToggle(node.path)}
+        onClick={() => isDir ? onToggle(node.path) : onSelect(node)}
         title={node.name}
       >
         {isDir ? (
@@ -208,7 +272,7 @@ function FileTreeNode({
         ) : (
           <>
             <span className="ft-leaf-indent" />
-            <FileIcon size={12} className={`ft-icon ft-icon--file${isSelected ? ' ft-icon--selected' : ''}`} />
+            <FileIcon size={12} className="ft-icon ft-icon--file" />
           </>
         )}
         <span className="ft-name">{node.name}</span>
@@ -219,6 +283,7 @@ function FileTreeNode({
           node={child}
           expanded={expanded}
           onToggle={onToggle}
+          onSelect={onSelect}
           selected={selected}
           depth={depth + 1}
         />
@@ -236,7 +301,7 @@ function ChatPanel({
   onSend: (text: string) => void;
   disabled: boolean;
   sending: boolean;
-  onOpenFile: (path: string, line?: number) => void;
+  onOpenFile: (path: string, startLine?: number, endLine?: number) => void;
 }) {
   const [input, setInput] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -280,7 +345,9 @@ function ChatPanel({
             <div className="la-msg-body">
               <div className="la-msg-content">
                 {msg.role === 'assistant'
-                  ? <MessageContent content={msg.content} onOpenFile={onOpenFile} />
+                  ? msg.flow && msg.flow.length > 0
+                    ? <StructuredContent content={msg.content} flow={msg.flow} onOpenFile={onOpenFile} />
+                    : <MessageContent content={msg.content} onOpenFile={onOpenFile} />
                   : msg.content
                 }
               </div>
@@ -330,19 +397,85 @@ export default function LegacyAnalysis() {
   const [treeLoading, setTreeLoading] = useState(false);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [fileContent, setFileContent] = useState('');
+  const [fileLoading, setFileLoading] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sending, setSending] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const pendingRangeRef = useRef<{ start: number; end: number } | null>(null);
+  const decorationsRef = useRef<ReturnType<editor.IStandaloneCodeEditor['createDecorationsCollection']> | null>(null);
+
   const treePanel = usePanelResize(220, 120, 480);
-  const isResizing = treePanel.dragging;
+  const chatPanel = usePanelResize(360, 240, 600);
+  const isResizing = treePanel.dragging || chatPanel.dragging;
+
+  // 파일 열기: 파일트리 클릭 or 채팅 링크 클릭 공용
+  async function openFile(filePath: string, startLine?: number, endLine?: number) {
+    const resolved = resolvePath(filePath, codePath).replace(/\\/g, '/');
+
+    setSelectedFile(resolved);
+    setFileContent('');
+    setFileLoading(true);
+    pendingRangeRef.current = startLine != null
+      ? { start: startLine, end: endLine ?? startLine }
+      : null;
+
+    // 파일 트리에서도 해당 파일까지 펼치기
+    setExpandedNodes(prev => {
+      const next = new Set(prev);
+      const parts = resolved.split('/');
+      for (let i = 1; i < parts.length; i++) {
+        next.add(parts.slice(0, i).join('/'));
+      }
+      return next;
+    });
+
+    const result = await readFile(resolved);
+    setFileLoading(false);
+    if (result.success && result.data) {
+      setFileContent(result.data.content);
+    }
+  }
+
+  // fileContent 로드 후 스크롤 + 하이라이트
+  useEffect(() => {
+    if (!pendingRangeRef.current || !editorRef.current || !fileContent) return;
+    const { start, end } = pendingRangeRef.current;
+    pendingRangeRef.current = null;
+    setTimeout(() => {
+      const ed = editorRef.current;
+      if (!ed) return;
+      ed.revealLineInCenter(start);
+      ed.setPosition({ lineNumber: start, column: 1 });
+      // 이전 decoration 제거 후 새 하이라이트 적용
+      decorationsRef.current?.clear();
+      decorationsRef.current = ed.createDecorationsCollection([
+        {
+          range: {
+            startLineNumber: start,
+            startColumn: 1,
+            endLineNumber: end,
+            endColumn: 1,
+          },
+          options: {
+            isWholeLine: true,
+            className: 'monaco-highlight-line',
+            overviewRuler: { color: 'rgba(99,102,241,0.8)', position: 1 },
+          },
+        },
+      ]);
+    }, 50);
+  }, [fileContent]);
 
   async function handleLoadTree(path: string) {
     if (!path.trim()) return;
     setTreeLoading(true);
     setFileTree(null);
     setSelectedFile(null);
+    setFileContent('');
     setExpandedNodes(new Set());
     setErrorMsg(null);
 
@@ -375,22 +508,6 @@ export default function LegacyAnalysis() {
     });
   }
 
-  /** 채팅 파일 링크 클릭 → 파일 트리에서 해당 파일 하이라이트 */
-  function handleOpenFile(filePath: string) {
-    const resolved = resolvePath(filePath, codePath).replace(/\\/g, '/');
-    setSelectedFile(resolved);
-
-    // 상위 폴더를 모두 펼쳐서 파일이 보이도록
-    setExpandedNodes(prev => {
-      const next = new Set(prev);
-      const parts = resolved.split('/');
-      for (let i = 1; i < parts.length; i++) {
-        next.add(parts.slice(0, i).join('/'));
-      }
-      return next;
-    });
-  }
-
   async function handleChatSend(text: string) {
     const userMsg: ChatMessage = { id: uid(), role: 'user', content: text, timestamp: nowStr() };
     setMessages(prev => [...prev, userMsg]);
@@ -402,17 +519,23 @@ export default function LegacyAnalysis() {
     const replyContent = result.success && result.data
       ? result.data.answer
       : result.error?.message ?? '답변을 가져오지 못했습니다.';
+    const replyFlow = result.success && result.data ? result.data.flow : undefined;
 
     setMessages(prev => [...prev, {
       id: uid(),
       role: 'assistant',
       content: replyContent,
+      flow: replyFlow,
       timestamp: nowStr(),
     }]);
   }
 
+  const selectedFileName = selectedFile
+    ? (selectedFile.split('/').pop() ?? selectedFile.split('\\').pop() ?? selectedFile)
+    : null;
+
   const treeColWidth = sidebarOpen ? treePanel.width : 32;
-  const gridCols = `${treeColWidth}px 5px 1fr`;
+  const gridCols = `${treeColWidth}px 5px 1fr 5px ${chatPanel.width}px`;
 
   return (
     <div className={`la-root${isResizing ? ' la-root--resizing' : ''}`}>
@@ -473,6 +596,7 @@ export default function LegacyAnalysis() {
                     node={fileTree}
                     expanded={expandedNodes}
                     onToggle={handleToggleNode}
+                    onSelect={(node) => openFile(node.path)}
                     selected={selectedFile}
                     depth={0}
                   />
@@ -482,11 +606,53 @@ export default function LegacyAnalysis() {
           )}
         </div>
 
-        {/* Drag Handle */}
+        {/* Drag Handle: Tree | Code */}
         <div
           className="la-drag-handle"
           onMouseDown={(e) => sidebarOpen && treePanel.startDrag(e, 1)}
           style={{ cursor: sidebarOpen ? 'col-resize' : 'default' }}
+        />
+
+        {/* Code Viewer Panel */}
+        <div className="la-code-panel">
+          <div className="la-panel-header">
+            <FileCode2 size={13} />
+            <span className="la-code-panel-title">{selectedFileName ?? '파일을 선택하세요'}</span>
+            {fileLoading && <Loader2 size={11} className="animate-spin" style={{ marginLeft: 'auto' }} />}
+          </div>
+          <div className="la-code-scroll">
+            {!selectedFile && (
+              <div className="la-empty">
+                <FileCode2 size={36} style={{ opacity: 0.15 }} />
+                <p>왼쪽 탐색기에서 파일을 선택하거나<br />채팅에서 경로를 클릭하세요.</p>
+              </div>
+            )}
+            {selectedFile && !fileLoading && (
+              <Editor
+                height="100%"
+                language={getLanguage(selectedFile)}
+                value={fileContent}
+                theme="vs-dark"
+                onMount={(ed) => { editorRef.current = ed; }}
+                options={{
+                  readOnly: true,
+                  minimap: { enabled: false },
+                  fontSize: 12,
+                  lineNumbers: 'on',
+                  scrollBeyondLastLine: false,
+                  wordWrap: 'on',
+                  padding: { top: 8, bottom: 8 },
+                }}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Drag Handle: Code | Chat */}
+        <div
+          className="la-drag-handle"
+          onMouseDown={(e) => chatPanel.startDrag(e, -1)}
+          style={{ cursor: 'col-resize' }}
         />
 
         {/* Chat Panel */}
@@ -496,7 +662,7 @@ export default function LegacyAnalysis() {
             onSend={handleChatSend}
             disabled={!codePath.trim()}
             sending={sending}
-            onOpenFile={handleOpenFile}
+            onOpenFile={openFile}
           />
         </div>
 

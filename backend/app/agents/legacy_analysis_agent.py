@@ -118,10 +118,11 @@ async def analyze_legacy_code(session_id: str, code_path: str) -> None:
         })
 
 
-async def chat_with_legacy_code(code_path: str, question: str, focused_file: str | None = None) -> str:
+async def chat_with_legacy_code(code_path: str, question: str, focused_file: str | None = None) -> dict:
     """
     분석 없이 소스코드를 직접 탐색하며 질문에 답합니다.
     에이전트는 Glob/Grep으로 관련 파일을 찾고 Read로 내용을 확인합니다.
+    JSON 형식({ summary, sections })으로 반환합니다.
     """
     prompt = load_prompt(
         "legacy_chat_agent.md",
@@ -159,4 +160,26 @@ async def chat_with_legacy_code(code_path: str, question: str, focused_file: str
             if text:
                 last_assistant_text = text
 
-    return result_text or last_assistant_text or "답변을 생성하지 못했습니다."
+    raw = result_text or last_assistant_text or ""
+    return _parse_chat_response(raw)
+
+
+def _parse_chat_response(raw: str) -> dict:
+    """에이전트 응답 텍스트에서 JSON을 추출합니다. 실패 시 fallback 구조로 반환."""
+    # 마크다운 코드블록 제거
+    text = raw.strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[-1]
+        if text.endswith("```"):
+            text = text[: text.rfind("```")]
+        text = text.strip()
+
+    try:
+        data = json.loads(text)
+        if isinstance(data, dict) and "summary" in data:
+            return data
+    except (json.JSONDecodeError, ValueError):
+        pass
+
+    # JSON 파싱 실패 → 텍스트를 summary로 감싸서 반환
+    return {"summary": raw or "답변을 생성하지 못했습니다.", "flow": []}

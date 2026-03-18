@@ -115,9 +115,10 @@ async def chat(body: ChatRequest):
     if not body.code_path.strip():
         raise HTTPException(status_code=400, detail="code_path는 필수입니다.")
 
-    answer = await chat_with_legacy_code(body.code_path, body.question, body.focused_file)
+    result = await chat_with_legacy_code(body.code_path, body.question, body.focused_file)
 
     return ApiResponse.ok({
         "code_path": body.code_path,
-        "answer": answer,
+        "answer": result.get("summary", ""),
+        "flow": result.get("flow", []),
     })
