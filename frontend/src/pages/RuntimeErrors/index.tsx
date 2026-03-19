@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { AlertCircle, RefreshCw, X } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { useRuntimeErrorStore } from '../../stores/runtimeErrorStore';
-import { getRuntimeErrors, updateRuntimeErrorStatus } from '../../api/runtimeErrors/runtimeErrorApis';
+import { getRuntimeErrors } from '../../api/runtimeErrors/runtimeErrorApis';
 import type { RuntimeError, RuntimeErrorLevel, RuntimeErrorStatus } from '../../types';
 import './RuntimeErrors.css';
 
@@ -23,7 +24,7 @@ const STATUS_LABELS: Record<RuntimeErrorStatus, string> = {
 const LIMIT = 50;
 
 export default function RuntimeErrors() {
-  const { errors, totalCount, isLoading, setErrors, setLoading, updateErrorStatus } =
+  const { errors, totalCount, isLoading, setErrors, setLoading } =
     useRuntimeErrorStore();
 
   const [page, setPage] = useState(0);
@@ -52,13 +53,6 @@ export default function RuntimeErrors() {
     setSelectedId(null);
   }
 
-  async function handleStatusChange(status: RuntimeErrorStatus) {
-    if (!selected) return;
-    const result = await updateRuntimeErrorStatus(selected.id, status);
-    if (result.success) {
-      updateErrorStatus(selected.id, status);
-    }
-  }
 
   const filtered = levelFilter === 'all' ? errors : errors.filter((e) => e.level === levelFilter);
   const totalPages = Math.max(1, Math.ceil(totalCount / LIMIT));
@@ -179,6 +173,12 @@ export default function RuntimeErrors() {
                 <span className={`re-badge ${LEVEL_COLORS[selected.level] ?? 'badge-error'}`}>
                   {selected.level}
                 </span>
+                <span className={`re-status-chip re-status-${selected.status}`}>
+                  {selected.status === 'analyzing'
+                    ? <><span className="re-analyzing-spinner" /> 분석 중</>
+                    : STATUS_LABELS[selected.status]
+                  }
+                </span>
                 <span className="re-modal-endpoint">
                   {selected.metadata?.method} {selected.metadata?.path}
                 </span>
@@ -190,13 +190,16 @@ export default function RuntimeErrors() {
 
             {/* 에러 정보 */}
             <div className="re-modal-section">
-              <div className="re-modal-meta">
-                <span className="re-modal-label">상태코드</span>
-                <span className="re-code">{selected.metadata?.status_code ?? selected.error_code}</span>
-                <span className="re-modal-label">프로젝트</span>
-                <span>{selected.project_id}</span>
-                <span className="re-modal-label">수신 시각</span>
-                <span>{formatTime(selected.created_at)}</span>
+              <div className="re-modal-meta-row">
+                <div className="re-modal-meta">
+                  <span className="re-modal-label">상태코드</span>
+                  <span className="re-code">{selected.metadata?.status_code ?? selected.error_code}</span>
+                  <span className="re-modal-label">프로젝트</span>
+                  <span>{selected.project_id}</span>
+                  <span className="re-modal-label">수신 시각</span>
+                  <span>{formatTime(selected.created_at)}</span>
+                </div>
+                <button className="re-add-task-btn">+ task 추가하기</button>
               </div>
               <div className="re-modal-message">{selected.message}</div>
             </div>
@@ -213,25 +216,11 @@ export default function RuntimeErrors() {
             {(selected.status === 'analyzed' || selected.status === 'resolved') && selected.fix_suggestion && (
               <div className="re-modal-section">
                 <div className="re-modal-section-title">수정 방안</div>
-                <pre className="re-fix-suggestion">{selected.fix_suggestion}</pre>
+                <div className="re-fix-suggestion re-fix-markdown">
+                  <ReactMarkdown>{selected.fix_suggestion}</ReactMarkdown>
+                </div>
               </div>
             )}
-
-            {/* 검토 상태 */}
-            <div className="re-modal-section">
-              <div className="re-modal-section-title">검토 상태</div>
-              <div className="re-status-btns">
-                {(Object.keys(STATUS_LABELS) as RuntimeErrorStatus[]).map((s) => (
-                  <button
-                    key={s}
-                    className={`re-status-btn re-status-btn-${s}${selected.status === s ? ' active' : ''}`}
-                    onClick={() => handleStatusChange(s)}
-                  >
-                    {STATUS_LABELS[s]}
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
       )}

@@ -320,6 +320,32 @@
   letter-spacing: 0.05em;
 }
 
+.re-modal-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.re-modal-meta-row .re-add-task-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.re-add-task-btn {
+  background: rgba(99,102,241,0.12);
+  border: 1px solid rgba(99,102,241,0.3);
+  color: #a5b4fc;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.re-add-task-btn:hover {
+  background: rgba(99,102,241,0.22);
+  color: #c7d2fe;
+}
+
 .re-modal-meta {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -348,14 +374,58 @@
   background: var(--bg-3);
   border: 1px solid var(--border, rgba(255,255,255,0.06));
   border-radius: 6px;
-  padding: 12px;
-  font-size: 12px;
-  font-family: monospace;
-  white-space: pre-wrap;
-  word-break: break-word;
+  padding: 12px 16px;
+  font-size: 13px;
   color: var(--text);
   line-height: 1.6;
   margin: 0;
+}
+
+/* Markdown 렌더링 */
+.re-fix-markdown p { margin: 0 0 10px; }
+.re-fix-markdown p:last-child { margin-bottom: 0; }
+.re-fix-markdown h1, .re-fix-markdown h2, .re-fix-markdown h3 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 14px 0 6px;
+}
+.re-fix-markdown h1:first-child,
+.re-fix-markdown h2:first-child,
+.re-fix-markdown h3:first-child { margin-top: 0; }
+.re-fix-markdown ul, .re-fix-markdown ol {
+  padding-left: 18px;
+  margin: 6px 0;
+}
+.re-fix-markdown li { margin: 3px 0; }
+.re-fix-markdown code {
+  background: rgba(255,255,255,0.08);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-family: monospace;
+  font-size: 12px;
+  color: #a5b4fc;
+}
+.re-fix-markdown pre {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border, rgba(255,255,255,0.08));
+  border-radius: 6px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  margin: 8px 0;
+}
+.re-fix-markdown pre code {
+  background: none;
+  padding: 0;
+  color: #e2e8f0;
+  font-size: 12px;
+}
+.re-fix-markdown strong { font-weight: 700; color: #f1f5f9; }
+.re-fix-markdown blockquote {
+  border-left: 3px solid rgba(255,255,255,0.2);
+  padding-left: 12px;
+  color: var(--text-muted);
+  margin: 8px 0;
 }
 
 /* ── 상태 버튼 ── */
