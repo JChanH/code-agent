@@ -1,6 +1,6 @@
 """RuntimeErrorRecord repository — DB 쿼리 전담."""
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.runtime_error import RuntimeErrorRecord
@@ -62,3 +62,37 @@ async def count_all(session: AsyncSession | None = None) -> int:
             select(func.count()).select_from(RuntimeErrorRecord)
         )
         return result.scalar_one()
+
+
+async def update_status(
+    error_id: str,
+    status: str,
+    session: AsyncSession | None = None,
+) -> RuntimeErrorRecord | None:
+    async with db_conn.transaction(session) as s:
+        await s.execute(
+            update(RuntimeErrorRecord)
+            .where(RuntimeErrorRecord.id == error_id)
+            .values(status=status)
+        )
+        result = await s.execute(
+            select(RuntimeErrorRecord).where(RuntimeErrorRecord.id == error_id)
+        )
+        return result.scalar_one_or_none()
+
+
+async def update_source_path(
+    error_id: str,
+    source_path: str,
+    session: AsyncSession | None = None,
+) -> RuntimeErrorRecord | None:
+    async with db_conn.transaction(session) as s:
+        await s.execute(
+            update(RuntimeErrorRecord)
+            .where(RuntimeErrorRecord.id == error_id)
+            .values(source_path=source_path)
+        )
+        result = await s.execute(
+            select(RuntimeErrorRecord).where(RuntimeErrorRecord.id == error_id)
+        )
+        return result.scalar_one_or_none()

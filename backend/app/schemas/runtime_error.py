@@ -1,9 +1,11 @@
 """Pydantic schemas for runtime error API."""
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel
+
+RuntimeErrorStatus = Literal["pending", "analyzed", "resolved", "ignored"]
 
 
 class RuntimeErrorResponse(BaseModel):
@@ -14,6 +16,9 @@ class RuntimeErrorResponse(BaseModel):
     level: str
     error_timestamp: Optional[datetime] = None
     metadata: Optional[Any] = None
+    source_path: Optional[str] = None
+    fix_suggestion: Optional[str] = None
+    status: RuntimeErrorStatus = "pending"
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -29,10 +34,21 @@ class RuntimeErrorResponse(BaseModel):
                 "level": obj.level,
                 "error_timestamp": obj.error_timestamp,
                 "metadata": obj.metadata_,
+                "source_path": obj.source_path,
+                "fix_suggestion": obj.fix_suggestion,
+                "status": obj.status,
                 "created_at": obj.created_at,
             }
             return cls(**data)
         return super().model_validate(obj, **kwargs)
+
+
+class RuntimeErrorStatusUpdate(BaseModel):
+    status: RuntimeErrorStatus
+
+
+class RuntimeErrorSourcePathUpdate(BaseModel):
+    source_path: str
 
 
 class RuntimeErrorListResponse(BaseModel):

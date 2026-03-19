@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Optional
 
-from sqlalchemy import Enum, Index, JSON, String, Text, TIMESTAMP, func as sa_func
+from sqlalchemy import Enum, Index, JSON, String, Text, TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -33,6 +33,17 @@ class RuntimeErrorRecord(Base):
     error_timestamp: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP)
 
     metadata_: Mapped[Optional[Any]] = mapped_column("metadata", JSON)
+
+    source_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+
+    fix_suggestion: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    status: Mapped[str] = mapped_column(
+        Enum("pending", "analyzed", "resolved", "ignored", name="runtime_error_status_enum"),
+        nullable=False,
+        default="pending",
+        server_default="pending",
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
