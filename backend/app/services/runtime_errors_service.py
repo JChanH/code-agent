@@ -24,5 +24,3 @@ async def update_status(error_id: str, status: str) -> RuntimeErrorRecord | None
     return await runtime_error_repository.update_status(error_id, status)
 
 
-async def update_source_path(error_id: str, source_path: str) -> RuntimeErrorRecord | None:
-    return await runtime_error_repository.update_source_path(error_id, source_path)

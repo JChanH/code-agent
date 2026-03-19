@@ -197,7 +197,7 @@ export interface WsSpecAnalyzeFailed {
 // ── Runtime Error ─────────────────────────────────────────────────────────────
 
 export type RuntimeErrorLevel = 'error' | 'warning' | 'critical' | 'info';
-export type RuntimeErrorStatus = 'pending' | 'analyzed' | 'resolved' | 'ignored';
+export type RuntimeErrorStatus = 'pending' | 'analyzing' | 'analyzed' | 'resolved' | 'ignored';
 
 export interface RuntimeErrorMetadata {
   path: string;
@@ -215,7 +215,6 @@ export interface RuntimeError {
   level: RuntimeErrorLevel;
   error_timestamp: string | null;
   metadata: RuntimeErrorMetadata | null;
-  source_path: string | null;
   fix_suggestion: string | null;
   status: RuntimeErrorStatus;
   created_at: string;

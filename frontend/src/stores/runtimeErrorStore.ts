@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { RuntimeError, RuntimeErrorStatus, WsMessage } from '../types';
 import { useAppStore } from './index';
 
+
 interface RuntimeErrorState {
   errors: RuntimeError[];
   totalCount: number;
@@ -12,7 +13,6 @@ interface RuntimeErrorState {
   setLoading: (loading: boolean) => void;
   clearErrors: () => void;
   updateErrorStatus: (errorId: string, status: RuntimeErrorStatus) => void;
-  updateErrorSourcePath: (errorId: string, sourcePath: string) => void;
 
   handleWsMessage: (msg: WsMessage) => void;
 }
@@ -31,18 +31,34 @@ export const useRuntimeErrorStore = create<RuntimeErrorState>((set) => ({
     set((s) => ({
       errors: s.errors.map((e) => (e.id === errorId ? { ...e, status } : e)),
     })),
-  updateErrorSourcePath: (errorId, sourcePath) =>
-    set((s) => ({
-      errors: s.errors.map((e) => (e.id === errorId ? { ...e, source_path: sourcePath } : e)),
-    })),
 
   handleWsMessage: (msg) => {
-    if (msg.type !== 'runtime_error') return;
-    const data = (msg as unknown as { type: string; data: RuntimeError }).data;
-    set((s) => ({
-      errors: [data, ...s.errors],
-      totalCount: s.totalCount + 1,
-    }));
-    useAppStore.getState().addLog('error', `[런타임 에러] ${data.error_code}: ${data.message}`);
+    if (msg.type === 'runtime_error') {
+      const data = (msg as unknown as { type: string; data: RuntimeError }).data;
+      set((s) => ({
+        errors: [data, ...s.errors],
+        totalCount: s.totalCount + 1,
+      }));
+      useAppStore.getState().addLog('error', `[런타임 에러] ${data.error_code}: ${data.message}`);
+      return;
+    }
+
+    if (msg.type === 'runtime_error_update') {
+      const data = msg.data as { id: string; status: RuntimeErrorStatus; fix_suggestion: string };
+      set((s) => ({
+        errors: s.errors.map((e) =>
+          e.id === data.id
+            ? { ...e, status: data.status, fix_suggestion: data.fix_suggestion }
+            : e,
+        ),
+      }));
+      return;
+    }
+
+    if (msg.type === 'runtime_error_agent_message') {
+      const data = msg.data as { error_id: string; message: string };
+      useAppStore.getState().addLog('info', `[런타임 분석] ${data.message}`);
+      return;
+    }
   },
 }));

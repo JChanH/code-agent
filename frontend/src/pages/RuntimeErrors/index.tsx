@@ -1,12 +1,7 @@
 import { useEffect, useState } from 'react';
-import { AlertCircle, FolderOpen, RefreshCw, X } from 'lucide-react';
-import { useAppStore } from '../../stores';
+import { AlertCircle, RefreshCw, X } from 'lucide-react';
 import { useRuntimeErrorStore } from '../../stores/runtimeErrorStore';
-import {
-  getRuntimeErrors,
-  updateRuntimeErrorSourcePath,
-  updateRuntimeErrorStatus,
-} from '../../api/runtimeErrors/runtimeErrorApis';
+import { getRuntimeErrors, updateRuntimeErrorStatus } from '../../api/runtimeErrors/runtimeErrorApis';
 import type { RuntimeError, RuntimeErrorLevel, RuntimeErrorStatus } from '../../types';
 import './RuntimeErrors.css';
 
@@ -19,6 +14,7 @@ const LEVEL_COLORS: Record<RuntimeErrorLevel, string> = {
 
 const STATUS_LABELS: Record<RuntimeErrorStatus, string> = {
   pending: '대기',
+  analyzing: '분석 중',
   analyzed: '분석완료',
   resolved: '해결됨',
   ignored: '무시',
@@ -27,16 +23,13 @@ const STATUS_LABELS: Record<RuntimeErrorStatus, string> = {
 const LIMIT = 50;
 
 export default function RuntimeErrors() {
-  const { errors, totalCount, isLoading, setErrors, setLoading, updateErrorStatus, updateErrorSourcePath } =
+  const { errors, totalCount, isLoading, setErrors, setLoading, updateErrorStatus } =
     useRuntimeErrorStore();
-  const { projects, selectedProjectId } = useAppStore();
-  const currentProject = projects.find((p) => p.id === selectedProjectId);
 
   const [page, setPage] = useState(0);
   const [levelFilter, setLevelFilter] = useState<string>('all');
-  const [selected, setSelected] = useState<RuntimeError | null>(null);
-  const [sourcePath, setSourcePath] = useState('');
-  const [savingPath, setSavingPath] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = errors.find((e) => e.id === selectedId) ?? null;
 
   async function fetchErrors(pageNum: number) {
     setLoading(true);
@@ -52,13 +45,11 @@ export default function RuntimeErrors() {
   }, [page]);
 
   function openModal(err: RuntimeError) {
-    setSelected(err);
-    setSourcePath(err.source_path ?? currentProject?.local_repo_path ?? '');
+    setSelectedId(err.id);
   }
 
   function closeModal() {
-    setSelected(null);
-    setSourcePath('');
+    setSelectedId(null);
   }
 
   async function handleStatusChange(status: RuntimeErrorStatus) {
@@ -66,19 +57,7 @@ export default function RuntimeErrors() {
     const result = await updateRuntimeErrorStatus(selected.id, status);
     if (result.success) {
       updateErrorStatus(selected.id, status);
-      setSelected((prev) => (prev ? { ...prev, status } : null));
     }
-  }
-
-  async function handleSavePath() {
-    if (!selected || !sourcePath.trim()) return;
-    setSavingPath(true);
-    const result = await updateRuntimeErrorSourcePath(selected.id, sourcePath.trim());
-    if (result.success) {
-      updateErrorSourcePath(selected.id, sourcePath.trim());
-      setSelected((prev) => (prev ? { ...prev, source_path: sourcePath.trim() } : null));
-    }
-    setSavingPath(false);
   }
 
   const filtered = levelFilter === 'all' ? errors : errors.filter((e) => e.level === levelFilter);
@@ -158,9 +137,15 @@ export default function RuntimeErrors() {
                   </td>
                   <td className="re-project">{err.project_id}</td>
                   <td>
-                    <span className={`re-status-chip re-status-${err.status}`}>
-                      {STATUS_LABELS[err.status]}
-                    </span>
+                    {err.status === 'analyzing' ? (
+                      <span className="re-status-chip re-status-analyzing">
+                        <span className="re-analyzing-spinner" />
+                      </span>
+                    ) : (
+                      <span className={`re-status-chip re-status-${err.status}`}>
+                        {STATUS_LABELS[err.status]}
+                      </span>
+                    )}
                   </td>
                   <td className="re-time">{formatTime(err.created_at)}</td>
                 </tr>
@@ -216,32 +201,16 @@ export default function RuntimeErrors() {
               <div className="re-modal-message">{selected.message}</div>
             </div>
 
-            {/* 소스 코드 경로 */}
-            <div className="re-modal-section">
-              <div className="re-modal-section-title">
-                <FolderOpen size={13} />
-                소스 코드 경로
+            {/* 분석 중 표시 */}
+            {selected.status === 'analyzing' && (
+              <div className="re-modal-section re-analyzing-section">
+                <span className="re-analyzing-spinner re-analyzing-spinner-lg" />
+                <span className="re-analyzing-label">AI가 오류를 분석하고 있습니다…</span>
               </div>
-              <div className="re-path-row">
-                <input
-                  className="re-path-input"
-                  type="text"
-                  placeholder="/src/routes/users.py"
-                  value={sourcePath}
-                  onChange={(e) => setSourcePath(e.target.value)}
-                />
-                <button
-                  className="re-analyze-btn"
-                  onClick={handleSavePath}
-                  disabled={savingPath || !sourcePath.trim()}
-                >
-                  {savingPath ? '저장 중…' : '분석 요청'}
-                </button>
-              </div>
-            </div>
+            )}
 
-            {/* 수정 방안 (analyzed일 때만) */}
-            {selected.status === 'analyzed' && selected.fix_suggestion && (
+            {/* 수정 방안 (analyzed / resolved일 때) */}
+            {(selected.status === 'analyzed' || selected.status === 'resolved') && selected.fix_suggestion && (
               <div className="re-modal-section">
                 <div className="re-modal-section-title">수정 방안</div>
                 <pre className="re-fix-suggestion">{selected.fix_suggestion}</pre>

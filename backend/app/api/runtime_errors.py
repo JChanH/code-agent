@@ -3,10 +3,11 @@
 from fastapi import APIRouter, HTTPException
 
 from app.schemas.common import ApiResponse
-from app.schemas.runtime_error import RuntimeErrorListResponse, RuntimeErrorResponse, RuntimeErrorSourcePathUpdate, RuntimeErrorStatusUpdate
+from app.schemas.runtime_error import RuntimeErrorListResponse, RuntimeErrorResponse, RuntimeErrorStatusUpdate
 from app.services import runtime_errors_service
 
 runtime_errors_router = APIRouter(prefix="/runtime-errors", tags=["runtime-errors"])
+
 
 # 모든 오류 리스트 조회
 @runtime_errors_router.get("")
@@ -52,20 +53,6 @@ async def update_error_status(
     body: RuntimeErrorStatusUpdate
 ) -> ApiResponse[RuntimeErrorResponse]:
     record = await runtime_errors_service.update_status(error_id, body.status)
-    if not record:
-        raise HTTPException(status_code=404, detail="Runtime error not found")
-    return ApiResponse.ok(
-        RuntimeErrorResponse.model_validate(record)
-    )
-
-
-# 소스코드 경로 변경
-@runtime_errors_router.patch("/{error_id}/source-path")
-async def update_error_source_path(
-    error_id: str,
-    body: RuntimeErrorSourcePathUpdate
-) -> ApiResponse[RuntimeErrorResponse]:
-    record = await runtime_errors_service.update_source_path(error_id, body.source_path)
     if not record:
         raise HTTPException(status_code=404, detail="Runtime error not found")
     return ApiResponse.ok(

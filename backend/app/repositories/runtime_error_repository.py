@@ -81,18 +81,21 @@ async def update_status(
         return result.scalar_one_or_none()
 
 
-async def update_source_path(
+async def update_analysis_result(
     error_id: str,
-    source_path: str,
+    fix_suggestion: str,
+    status: str = "resolved",
     session: AsyncSession | None = None,
 ) -> RuntimeErrorRecord | None:
     async with db_conn.transaction(session) as s:
         await s.execute(
             update(RuntimeErrorRecord)
             .where(RuntimeErrorRecord.id == error_id)
-            .values(source_path=source_path)
+            .values(fix_suggestion=fix_suggestion, status=status)
         )
         result = await s.execute(
             select(RuntimeErrorRecord).where(RuntimeErrorRecord.id == error_id)
         )
         return result.scalar_one_or_none()
+
+

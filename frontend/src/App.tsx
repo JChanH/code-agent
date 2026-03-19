@@ -125,8 +125,9 @@ function BottomPanel() {
 // ── Main Content ──────────────────────────────────────────────────────────────
 
 function MainContent() {
-  const { selectedProjectId, activeTab } = useAppStore();
-  useWebSocket(selectedProjectId);
+  const { selectedProjectId, activeTab, projects } = useAppStore();
+  const selectedProject = projects.find((p) => p.id === selectedProjectId);
+  useWebSocket(selectedProject?.name ?? null);
 
   // Project-independent pages
   if (activeTab === 'legacy') {

@@ -19,6 +19,12 @@ async def find_by_id(project_id: str, session: AsyncSession | None = None) -> Pr
         return result.scalars().first()
 
 
+async def find_by_name(name: str, session: AsyncSession | None = None) -> Project | None:
+    async with db_conn.transaction(session) as s:
+        result = await s.execute(select(Project).where(Project.name == name))
+        return result.scalars().first()
+
+
 async def add(project: Project, session: AsyncSession | None = None) -> Project:
     async with db_conn.transaction(session) as s:
         s.add(project)

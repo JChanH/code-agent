@@ -40,17 +40,3 @@ export async function updateRuntimeErrorStatus(
   }
 }
 
-export async function updateRuntimeErrorSourcePath(
-  errorId: string,
-  sourcePath: string,
-): Promise<ApiResponse<RuntimeError>> {
-  try {
-    const res = await client.patch<ApiResponse<RuntimeError>>(
-      `/api/runtime-errors/${errorId}/source-path`,
-      { source_path: sourcePath },
-    );
-    return res.data;
-  } catch (e) {
-    return extractErrorResponse(e);
-  }
-}

@@ -34,12 +34,10 @@ class RuntimeErrorRecord(Base):
 
     metadata_: Mapped[Optional[Any]] = mapped_column("metadata", JSON)
 
-    source_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-
     fix_suggestion: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     status: Mapped[str] = mapped_column(
-        Enum("pending", "analyzed", "resolved", "ignored", name="runtime_error_status_enum"),
+        Enum("pending", "analyzing", "analyzed", "resolved", "ignored", name="runtime_error_status_enum"),
         nullable=False,
         default="pending",
         server_default="pending",
