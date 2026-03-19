@@ -6,6 +6,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
+from app.redis import redis_client
+from app.redis.consumer import error_consumer
 from app.api import (
     agent_router,
     git_router,
@@ -14,6 +16,7 @@ from app.api import (
     project_tasks_router,
     project_worktrees_router,
     projects_router,
+    runtime_errors_router,
     specs_router,
     tasks_router,
     users_router,
@@ -32,9 +35,11 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Create database tables on startup."""
-
+    await redis_client.connect()
+    error_consumer.start()
     yield
+    await error_consumer.stop()
+    await redis_client.close()
 
 
 app = FastAPI(
@@ -80,6 +85,7 @@ app.include_router(specs_router, prefix="/api")
 app.include_router(git_router, prefix="/api")
 app.include_router(agent_router, prefix="/api")
 app.include_router(legacy_router, prefix="/api")
+app.include_router(runtime_errors_router, prefix="/api")
 
 
 # ── WebSocket endpoint ───────────────────────

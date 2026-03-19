@@ -1,6 +1,7 @@
 """SQLAlchemy ORM models package."""
 
 from app.models.project import Project
+from app.models.runtime_error import RuntimeErrorRecord
 from app.models.security import SecurityProfile
 from app.models.setting import Setting
 from app.models.spec import Spec
@@ -15,4 +16,5 @@ __all__ = [
     "Task",
     "SecurityProfile",
     "Setting",
+    "RuntimeErrorRecord",
 ]

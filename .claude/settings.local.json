@@ -39,7 +39,8 @@
       "Bash(do echo:*)",
       "Bash(ls -la /c/workspace/auto_code_demo/agent_practice/code-agent/backend/app/agents/*.py)",
       "Bash(find /c/workspace/auto_code_demo/agent_practice/code-agent/backend/app/agents/prompts -type f -name *.md -o -name *.txt)",
-      "Bash(ls -la /c/workspace/auto_code_demo/agent_practice/code-agent/backend/app/agents/prompts/*.md)"
+      "Bash(ls -la /c/workspace/auto_code_demo/agent_practice/code-agent/backend/app/agents/prompts/*.md)",
+      "Bash(find /c/workspace/auto_code_demo/agent_practice/code-agent -maxdepth 2 -name *.toml -o -name *.yaml -o -name *.yml -o -name *.conf -o -name Dockerfile*)"
     ]
   }
 }

@@ -33,7 +33,7 @@ export type SpecStatus = 'uploaded' | 'analyzing' | 'final_confirmed';
 
 export type WorktreeStatus = 'active' | 'inactive' | 'archived';
 
-export type ActiveTab = 'dashboard' | 'design' | 'dev' | 'console' | 'git' | 'settings' | 'legacy';
+export type ActiveTab = 'dashboard' | 'design' | 'dev' | 'console' | 'git' | 'settings' | 'legacy' | 'runtime_errors';
 
 // ── Domain Models ─────────────────────────────────────────────────────────────
 
@@ -192,4 +192,34 @@ export interface WsSpecAnalyzed {
 export interface WsSpecAnalyzeFailed {
   spec_id: string;
   error: string;
+}
+
+// ── Runtime Error ─────────────────────────────────────────────────────────────
+
+export type RuntimeErrorLevel = 'error' | 'warning' | 'critical' | 'info';
+
+export interface RuntimeErrorMetadata {
+  path: string;
+  method: string;
+  status_code: number;
+  query_params: string;
+  request_body: string | null;
+}
+
+export interface RuntimeError {
+  id: string;
+  error_code: string;
+  message: string;
+  project_id: string;
+  level: RuntimeErrorLevel;
+  error_timestamp: string | null;
+  metadata: RuntimeErrorMetadata | null;
+  created_at: string;
+}
+
+export interface RuntimeErrorListResponse {
+  items: RuntimeError[];
+  total: number;
+  limit: number;
+  offset: number;
 }

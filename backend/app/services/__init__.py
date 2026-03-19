@@ -3,6 +3,7 @@
 from app.services import (
     git_service,
     projects_service,
+    runtime_errors_service,
     specs_service,
     tasks_service,
     users_service,
@@ -12,6 +13,7 @@ from app.services import (
 __all__ = [
     "git_service",
     "projects_service",
+    "runtime_errors_service",
     "specs_service",
     "tasks_service",
     "users_service",

@@ -20,10 +20,23 @@ class Settings(BaseSettings):
     db_user: str = "root"
     db_password: str = ""
     db_name: str = "code_agent"
+    
+    # redis
+    redis_secrete_key: str = "super-nuri"
+    redis_base_url: str = "121.126.171.185"
+    redis_base_port: int = 6379
+    redis_database: int = 3
 
     # Anthropic
     anthropic_api_key: str = ""
     max_concurrent_tasks: int = Field(default=3, validation_alias="MAX_CONCURRENT_TASKS")
+
+    @property
+    def redis_url(self) -> str:
+        return (
+            f"redis://:{self.redis_secrete_key}@{self.redis_base_url}"
+            f":{self.redis_base_port}/{self.redis_database}"
+        )
 
     @property
     def database_url(self) -> str:

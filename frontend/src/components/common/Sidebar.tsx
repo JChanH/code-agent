@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FolderOpen, GitBranch, Layers, Settings, Plus, Code2, Terminal, X, FolderSearch, Loader2, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { FolderOpen, GitBranch, Layers, Settings, Plus, Code2, Terminal, X, FolderSearch, Loader2, Search, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react";
 import { useAppStore } from "../../stores";
 import { createProject } from "../../api/project/projectApis";
 import type { ProjectCreate, ProjectType } from "../../api/project/projectTypes";
@@ -12,6 +12,7 @@ const TABS: { id: ActiveTab; label: string; icon: React.ReactNode }[] = [
   { id: "git", label: "Git 관리", icon: <GitBranch size={14} /> },
   { id: "settings", label: "프로젝트 설정", icon: <Settings size={14} /> },
   { id: "legacy", label: "레거시 코드 분석", icon: <Search size={14} /> },
+  { id: "runtime_errors", label: "런타임 에러", icon: <AlertCircle size={14} /> },
 ];
 
 const EMPTY_FORM: ProjectCreate = {
@@ -152,7 +153,7 @@ export default function Sidebar({ isOpen, onToggle }: { isOpen: boolean; onToggl
   const [showModal, setShowModal] = useState(false);
 
   function handleTabClick(tabId: ActiveTab) {
-    if (tabId !== "legacy" && !selectedProjectId && projects.length > 0) selectProject(projects[0].id);
+    if (tabId !== "legacy" && tabId !== "runtime_errors" && !selectedProjectId && projects.length > 0) selectProject(projects[0].id);
     setActiveTab(tabId);
   }
 
@@ -185,7 +186,7 @@ export default function Sidebar({ isOpen, onToggle }: { isOpen: boolean; onToggl
             <div className="sidebar-section-title"><span>메뉴</span></div>
             <ul className="sidebar-list">
               {TABS.map((tab, i) => (
-                <li key={tab.id} className={"sidebar-item " + (activeTab === tab.id && (selectedProjectId || tab.id === "legacy") ? "active" : "")} onClick={() => handleTabClick(tab.id)}>
+                <li key={tab.id} className={"sidebar-item " + (activeTab === tab.id && (selectedProjectId || tab.id === "legacy" || tab.id === "runtime_errors") ? "active" : "")} onClick={() => handleTabClick(tab.id)}>
                   <span style={{ flexShrink: 0, display: "flex" }}>{tab.icon}</span>
                   <span>{i + 1}. {tab.label}</span>
                 </li>
@@ -200,7 +201,7 @@ export default function Sidebar({ isOpen, onToggle }: { isOpen: boolean; onToggl
           {TABS.map((tab) => (
             <li
               key={tab.id}
-              className={"sidebar-item sidebar-item--icon " + (activeTab === tab.id && (selectedProjectId || tab.id === "legacy") ? "active" : "")}
+              className={"sidebar-item sidebar-item--icon " + (activeTab === tab.id && (selectedProjectId || tab.id === "legacy" || tab.id === "runtime_errors") ? "active" : "")}
               onClick={() => handleTabClick(tab.id)}
               title={tab.label}
             >
