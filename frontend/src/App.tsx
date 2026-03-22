@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { Bell, Settings, Code2, Trash2 } from 'lucide-react';
+import ComingSoon from './components/common/ComingSoon';
 import Sidebar from './components/common/Sidebar';
 import { useAppStore, CURRENT_USER_ID } from './stores';
 import { useWebSocket } from './hooks/useWebSocket';
@@ -158,9 +159,15 @@ function MainContent() {
   return (
     <Suspense fallback={<div className="loading">로딩 중...</div>}>
       {activeTab === 'dashboard' && (
-        <div className="empty-state">
-          <p>DASHBOARD 개발 예정</p>
-        </div>
+        <ComingSoon
+          title="대시보드"
+          description="프로젝트 진행 현황, 태스크 통계, 에이전트 활동 이력을 한눈에 확인하는 대시보드입니다."
+          details={[
+            '태스크 상태별 현황 차트',
+            '에이전트 실행 이력 타임라인',
+            '프로젝트별 진행률 요약',
+          ]}
+        />
       )}
       {activeTab === 'design' && <DesignPhase projectId={selectedProjectId} />}
       {activeTab === 'dev' && <DevPhase projectId={selectedProjectId} />}
