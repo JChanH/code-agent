@@ -22,6 +22,7 @@ _GUIDELINE_PATH = Path(__file__).parent / "guidemap" / "PYTHON_FASTAPI_BACKEND_G
 logger = logging.getLogger(__name__)
 
 # Structured Output — 설계 에이전트가 반환해야 하는 JSON 스키마
+# TODO - 간소화 하기(필요한 부분 분석 및 )
 TASK_LIST_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
