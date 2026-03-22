@@ -16,7 +16,7 @@ from app.utils.db_handler_sqlalchemy import db_conn
 from app.agents.prompts import load_prompt, load_text
 from app.agents.guidemap_agent import guidemap_exists, get_design_context
 
-# 가이드라인 파일 경로 (agents/guidemap/PYTHON_FASTAPI_BACKEND_GUIDELINE.md)
+# 임시 가이드라인 파일 경로 (agents/guidemap/PYTHON_FASTAPI_BACKEND_GUIDELINE.md)
 _GUIDELINE_PATH = Path(__file__).parent / "guidemap" / "PYTHON_FASTAPI_BACKEND_GUIDELINE.md"
 
 logger = logging.getLogger(__name__)

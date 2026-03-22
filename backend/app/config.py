@@ -22,10 +22,10 @@ class Settings(BaseSettings):
     db_name: str = "code_agent"
     
     # redis
-    redis_secrete_key: str = "super-nuri"
-    redis_base_url: str = "121.126.171.185"
+    redis_secrete_key: str = ""
+    redis_base_url: str = "localhost"
     redis_base_port: int = 6379
-    redis_database: int = 3
+    redis_database: int = 0
 
     # Anthropic
     anthropic_api_key: str = ""
