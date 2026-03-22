@@ -172,6 +172,11 @@ async def _run_analysis(record: RuntimeErrorRecord) -> None:
 
     except Exception as exc:
         logger.exception("Analysis task failed for error_id=%s: %s", record.id, exc)
+        await runtime_error_repository.update_status(record.id, "failed")
+        await ws_manager.broadcast(record.project_id, {
+            "type": "runtime_error_update",
+            "data": {"id": record.id, "status": "failed"},
+        })
 
 
 def _build_ws_payload(record: RuntimeErrorRecord) -> dict:
