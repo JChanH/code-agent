@@ -4,23 +4,22 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Callable, Awaitable
 
 from claude_agent_sdk import query, ClaudeAgentOptions
 
 from app.models import Task, Project
 from app.agents.prompts import load_prompt
 from app.agents.guidemap_agent import guidemap_exists, _get_guidemap_path
+from app.websocket.messages import BroadcastFn, extract_agent_msg_data, msg_agent_message
 
 logger = logging.getLogger(__name__)
-
-Broadcaster = Callable[[dict], Awaitable[None]]
 
 # NOTE: 임시
 _GUIDELINE_PATH = Path(__file__).parent / "guidemap" / "PYTHON_FASTAPI_BACKEND_GUIDELINE.md"
 
 
 def _build_prompt(task: Task, project: Project, review_context: dict | None = None) -> str:
+    # TODO 좀더 구조적으로 정리할수 있는지 코드 분석하기
     criteria_text = ""
     if task.acceptance_criteria:
         criteria_list = "\n".join(f"  - {c}" for c in task.acceptance_criteria)
@@ -43,7 +42,8 @@ def _build_prompt(task: Task, project: Project, review_context: dict | None = No
                 f"Read `{_GUIDELINE_PATH}` using the Read tool and follow its rules.\n"
             )
         elif guidemap_exists(project.name):
-            guidemap_content = _get_guidemap_path(project.name).read_text(encoding="utf-8")
+            # 코드 관련된 guidemap만 가져오기
+            guidemap_content = _get_guidemap_path(project.name, "code").read_text(encoding="utf-8")
             guideline_section = f"\n## Project Guide\n{guidemap_content}\n"
 
     target_files_section = ""
@@ -75,7 +75,7 @@ async def run_code_agent(
     task: Task,
     project: Project,
     review_context: dict | None = None,
-    broadcast: Broadcaster | None = None,
+    broadcast: BroadcastFn | None = None,
 ) -> None:
     """
     Task를 구현하고 테스트를 작성합니다.
@@ -96,13 +96,4 @@ async def run_code_agent(
 
     async for message in query(prompt=prompt, options=options):
         if broadcast:
-            try:
-                msg_data = message.model_dump() if hasattr(message, "model_dump") else str(message)
-            except Exception:
-                msg_data = str(message)
-            await broadcast({
-                "type": "agent_message",
-                "task_id": task.id,
-                "agent": "code",
-                "message": msg_data,
-            })
+            await broadcast(msg_agent_message(extract_agent_msg_data(message), task_id=task.id, agent="code"))

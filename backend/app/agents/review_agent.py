@@ -11,16 +11,15 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass
-from typing import Any, Callable, Awaitable
+from typing import Any
 
 from claude_agent_sdk import query, ClaudeAgentOptions
 
 from app.models import Task, Project
 from app.agents.prompts import load_prompt
+from app.websocket.messages import BroadcastFn, extract_agent_msg_data, msg_agent_message
 
 logger = logging.getLogger(__name__)
-
-Broadcaster = Callable[[dict], Awaitable[None]]
 
 # TODO: 검토 후 True로 변경
 REVIEW_ENABLED = False
@@ -89,7 +88,7 @@ def _build_prompt(task: Task, project: Project) -> str:
 async def run_review_agent(
     task: Task,
     project: Project,
-    broadcast: Broadcaster | None = None,
+    broadcast: BroadcastFn | None = None,
 ) -> ReviewResult:
     """
     Task 구현을 pytest로 검증합니다.
@@ -121,16 +120,7 @@ async def run_review_agent(
 
     async for message in query(prompt=prompt, options=options):
         if broadcast:
-            try:
-                msg_data = message.model_dump() if hasattr(message, "model_dump") else str(message)
-            except Exception:
-                msg_data = str(message)
-            await broadcast({
-                "type": "agent_message",
-                "task_id": task.id,
-                "agent": "review",
-                "message": msg_data,
-            })
+            await broadcast(msg_agent_message(extract_agent_msg_data(message), task_id=task.id, agent="review"))
 
         if hasattr(message, "structured_output") and message.structured_output is not None:
             parsed = message.structured_output

@@ -1,5 +1,12 @@
 import { create } from 'zustand';
-import type { RuntimeError, RuntimeErrorStatus, WsMessage } from '../types';
+import type {
+  RuntimeError,
+  RuntimeErrorStatus,
+  WsMessage,
+  WsMsgRuntimeError,
+  WsMsgRuntimeErrorAgentMessage,
+  WsMsgRuntimeErrorUpdate,
+} from '../types';
 import { useAppStore } from './index';
 
 
@@ -34,7 +41,7 @@ export const useRuntimeErrorStore = create<RuntimeErrorState>((set) => ({
 
   handleWsMessage: (msg) => {
     if (msg.type === 'runtime_error') {
-      const data = (msg as unknown as { type: string; data: RuntimeError }).data;
+      const { data } = msg as WsMsgRuntimeError;
       set((s) => ({
         errors: [data, ...s.errors],
         totalCount: s.totalCount + 1,
@@ -44,11 +51,11 @@ export const useRuntimeErrorStore = create<RuntimeErrorState>((set) => ({
     }
 
     if (msg.type === 'runtime_error_update') {
-      const data = msg.data as { id: string; status: RuntimeErrorStatus; fix_suggestion: string };
+      const { data } = msg as WsMsgRuntimeErrorUpdate;
       set((s) => ({
         errors: s.errors.map((e) =>
           e.id === data.id
-            ? { ...e, status: data.status, fix_suggestion: data.fix_suggestion }
+            ? { ...e, status: data.status, fix_suggestion: data.fix_suggestion ?? e.fix_suggestion }
             : e,
         ),
       }));
@@ -56,7 +63,7 @@ export const useRuntimeErrorStore = create<RuntimeErrorState>((set) => ({
     }
 
     if (msg.type === 'runtime_error_agent_message') {
-      const data = msg.data as { error_id: string; message: string };
+      const { data } = msg as WsMsgRuntimeErrorAgentMessage;
       useAppStore.getState().addLog('info', `[런타임 분석] ${data.message}`);
       return;
     }

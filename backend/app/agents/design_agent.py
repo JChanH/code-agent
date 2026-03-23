@@ -11,13 +11,21 @@ from claude_agent_sdk import query, ClaudeAgentOptions
 
 from app.models import Spec, Project, Task
 from app.repositories import spec_repository, project_repository
-from app.websocket import ws_manager
+from app.websocket import make_broadcaster
+from app.websocket.messages import (
+    extract_agent_msg_data,
+    msg_agent_message,
+    msg_spec_analyzed,
+    msg_spec_analyze_failed,
+    msg_spec_analyzing,
+)
 from app.utils.db_handler_sqlalchemy import db_conn
 from app.agents.prompts import load_prompt, load_text
 from app.agents.guidemap_agent import guidemap_exists, get_design_context
 
+# NOTE 작업중
 # 임시 가이드라인 파일 경로 (agents/guidemap/PYTHON_FASTAPI_BACKEND_GUIDELINE.md)
-_GUIDELINE_PATH = Path(__file__).parent / "guidemap" / "PYTHON_FASTAPI_BACKEND_GUIDELINE.md"
+# _GUIDELINE_PATH = Path(__file__).parent / "guidemap" / "PYTHON_FASTAPI_BACKEND_GUIDELINE.md"
 
 logger = logging.getLogger(__name__)
 
@@ -284,12 +292,11 @@ async def analyze_spec_and_create_tasks(spec_id: str) -> None:
 
     project_id = project.id
 
-    async def broadcast(msg: dict) -> None:
-        await ws_manager.broadcast(project_id, msg)
+    broadcast = make_broadcaster(project_id)
 
     # 2. Set status → analyzing
     await _update_spec_status(spec_id, "analyzing")
-    await broadcast({"type": "spec_analyzing", "spec_id": spec_id})
+    await broadcast(msg_spec_analyzing(spec_id))
 
     try:
         spec_content = await _load_spec_content(spec)
@@ -306,13 +313,7 @@ async def analyze_spec_and_create_tasks(spec_id: str) -> None:
         parsed: dict | None = None
 
         async for message in query(prompt=prompt, options=options):
-            # Forward agent messages to WebSocket
-            try:
-                msg_data = message.model_dump() if hasattr(message, "model_dump") else str(message)
-            except Exception:
-                msg_data = str(message)
-
-            await broadcast({"type": "agent_message", "spec_id": spec_id, "message": msg_data})
+            await broadcast(msg_agent_message(extract_agent_msg_data(message), spec_id=spec_id))
 
             # Extract structured_output from ResultMessage (when output_format=json_schema)
             if hasattr(message, "structured_output") and message.structured_output is not None:
@@ -344,11 +345,10 @@ async def analyze_spec_and_create_tasks(spec_id: str) -> None:
 
         # 6. Broadcast completion
         await broadcast(
-            {
-                "type": "spec_analyzed",
-                "spec_id": spec_id,
-                "analysis_summary": analysis_summary,
-                "tasks": [
+            msg_spec_analyzed(
+                spec_id=spec_id,
+                analysis_summary=analysis_summary,
+                tasks=[
                     {
                         "id": t.id,
                         "project_id": t.project_id,
@@ -361,16 +361,10 @@ async def analyze_spec_and_create_tasks(spec_id: str) -> None:
                     }
                     for t in saved_tasks
                 ],
-            }
+            )
         )
 
     except Exception as exc:
         logger.exception("Design Agent failed (spec_id=%s): %s", spec_id, exc)
         await _update_spec_status(spec_id, "uploaded")  # Revert status on failure
-        await broadcast(
-            {
-                "type": "spec_analyze_failed",
-                "spec_id": spec_id,
-                "error": str(exc),
-            }
-        )
+        await broadcast(msg_spec_analyze_failed(spec_id, str(exc)))

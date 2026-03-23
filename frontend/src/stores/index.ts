@@ -7,9 +7,15 @@ import type {
   Spec,
   SpecStatus,
   Task,
-  TaskStatus,
   WsMessage,
-  WsSpecAnalyzed,
+  WsMsgAgentMessage,
+  WsMsgGuidemapFailed,
+  WsMsgGuidemapGenerated,
+  WsMsgGuidemapGenerating,
+  WsMsgSpecAnalyzed,
+  WsMsgSpecAnalyzeFailed,
+  WsMsgSpecAnalyzing,
+  WsMsgTaskUpdate,
 } from '../types';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -110,35 +116,38 @@ export const useAppStore = create<AppState>((set) => ({
   clearLogs: () => set({ logs: [] }),
 
   handleWsMessage: (msg) => {
+    // 가이드맵 생성중
     switch (msg.type) {
       case 'guidemap_generating': {
-        const data = msg as unknown as { project_id: string };
+        const { project_id } = msg as WsMsgGuidemapGenerating;
         set((s) => {
           const next = new Set(s.guidemapGeneratingProjectIds);
-          next.add(data.project_id);
+          next.add(project_id);
           return { guidemapGeneratingProjectIds: next };
         });
         useAppStore.getState().addLog('info', '가이드맵 생성 시작...');
         break;
       }
+      // 가이드맵 생성 완료
       case 'guidemap_generated': {
-        const data = msg as unknown as { project_id: string };
+        const { project_id } = msg as WsMsgGuidemapGenerated;
         set((s) => {
           const next = new Set(s.guidemapGeneratingProjectIds);
-          next.delete(data.project_id);
+          next.delete(project_id);
           return { guidemapGeneratingProjectIds: next };
         });
         useAppStore.getState().addLog('success', '가이드맵 생성 완료');
         break;
       }
+      // 가이드맵 생성 실패
       case 'guidemap_failed': {
-        const data = msg as unknown as { project_id: string; error?: string };
+        const { project_id, error } = msg as WsMsgGuidemapFailed;
         set((s) => {
           const next = new Set(s.guidemapGeneratingProjectIds);
-          next.delete(data.project_id);
+          next.delete(project_id);
           return { guidemapGeneratingProjectIds: next };
         });
-        useAppStore.getState().addLog('error', `가이드맵 생성 실패${data.error ? ': ' + data.error : ''}`);
+        useAppStore.getState().addLog('error', `가이드맵 생성 실패${error ? ': ' + error : ''}`);
         break;
       }
     }
@@ -188,73 +197,69 @@ export const useTaskStore = create<TaskState>((set) => ({
 
     switch (msg.type) {
       case 'task_update': {
-        const data = msg as unknown as { task_id: string; status: TaskStatus; message?: string };
+        const { task_id, status, error } = msg as WsMsgTaskUpdate;
         set((s) => ({
-          tasks: s.tasks.map((t) =>
-            t.id === data.task_id ? { ...t, status: data.status } : t
-          ),
+          tasks: s.tasks.map((t) => (t.id === task_id ? { ...t, status } : t)),
         }));
-        const level: LogLevel = data.status === 'done' ? 'success' : data.status === 'failed' ? 'error' : 'info';
-        addLog(level, `Task #${data.task_id} 상태 변경: ${data.status}${data.message ? ' — ' + data.message : ''}`);
+        const level: LogLevel = status === 'done' ? 'success' : status === 'failed' ? 'error' : 'info';
+        addLog(level, `Task #${task_id} 상태 변경: ${status}${error ? ' — ' + error : ''}`);
         break;
       }
 
       case 'spec_analyzing': {
-        const data = msg as unknown as { spec_id: string };
+        const { spec_id } = msg as WsMsgSpecAnalyzing;
         set((s) => {
           const next = new Set(s.analyzingSpecIds);
-          next.add(data.spec_id);
+          next.add(spec_id);
           return {
             analyzingSpecIds: next,
             specs: s.specs.map((sp) =>
-              sp.id === data.spec_id ? { ...sp, status: 'analyzing' as SpecStatus } : sp
+              sp.id === spec_id ? { ...sp, status: 'analyzing' as SpecStatus } : sp
             ),
           };
         });
-        addLog('info', `Spec #${(msg as unknown as { spec_id: string }).spec_id} 분석 시작...`);
+        addLog('info', `Spec #${spec_id} 분석 시작...`);
         break;
       }
 
       case 'spec_analyzed': {
-        const data = msg as unknown as WsSpecAnalyzed;
+        const { spec_id, analysis_summary, tasks: newTaskItems } = msg as WsMsgSpecAnalyzed;
         set((s) => {
           const next = new Set(s.analyzingSpecIds);
-          next.delete(data.spec_id);
-          // 새로 생성된 Task들 스토어에 추가
+          next.delete(spec_id);
           const existingIds = new Set(s.tasks.map((t) => t.id));
-          const newTasks = data.tasks.filter((t) => !existingIds.has(t.id)) as unknown as Task[];
+          const newTasks = newTaskItems.filter((t) => !existingIds.has(t.id)) as unknown as Task[];
           return {
             analyzingSpecIds: next,
-            // 분석 완료 후 spec은 'uploaded'로 복귀 (kanban column 1에서 사라짐)
             specs: s.specs.map((sp) =>
-              sp.id === data.spec_id ? { ...sp, status: 'uploaded' as SpecStatus } : sp
+              sp.id === spec_id ? { ...sp, status: 'uploaded' as SpecStatus } : sp
             ),
             tasks: [...s.tasks, ...newTasks],
           };
         });
-        addLog('success', `Spec 분석 완료 — ${data.tasks.length}개 태스크 생성${data.analysis_summary ? ': ' + data.analysis_summary.slice(0, 80) : ''}`);
+        addLog('success', `Spec 분석 완료 — ${newTaskItems.length}개 태스크 생성${analysis_summary ? ': ' + analysis_summary.slice(0, 80) : ''}`);
         break;
       }
 
       case 'spec_analyze_failed': {
-        const data = msg as unknown as { spec_id: string; error: string };
+        const { spec_id, error } = msg as WsMsgSpecAnalyzeFailed;
         set((s) => {
           const next = new Set(s.analyzingSpecIds);
-          next.delete(data.spec_id);
+          next.delete(spec_id);
           return {
             analyzingSpecIds: next,
             specs: s.specs.map((sp) =>
-              sp.id === data.spec_id ? { ...sp, status: 'uploaded' as SpecStatus } : sp
+              sp.id === spec_id ? { ...sp, status: 'uploaded' as SpecStatus } : sp
             ),
           };
         });
-        addLog('error', `Spec 분석 실패: ${data.error}`);
+        addLog('error', `Spec 분석 실패: ${error}`);
         break;
       }
 
       case 'agent_message': {
-        const data = msg as unknown as { spec_id: string; message: unknown };
-        const { level, msg: text } = formatAgentMessage(data.message);
+        const { message } = msg as WsMsgAgentMessage;
+        const { level, msg: text } = formatAgentMessage(message);
         if (text) addLog(level, text);
         break;
       }

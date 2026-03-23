@@ -9,7 +9,14 @@ from pathlib import Path
 from claude_agent_sdk import query, ClaudeAgentOptions
 
 from app.models import Project
-from app.websocket import ws_manager
+from app.websocket import make_broadcaster
+from app.websocket.messages import (
+    extract_agent_msg_data,
+    msg_agent_message,
+    msg_guidemap_failed,
+    msg_guidemap_generated,
+    msg_guidemap_generating,
+)
 from app.agents.prompts import load_prompt
 
 logger = logging.getLogger(__name__)
@@ -17,46 +24,48 @@ logger = logging.getLogger(__name__)
 _GUIDEMAP_DIR = Path(__file__).parent / "guidemaps"
 
 
-def _get_guidemap_path(project_name: str) -> Path:
-    return _GUIDEMAP_DIR / f"{project_name}_guidemap.md"
+def _get_guidemap_path(project_name: str, kind: str) -> Path:
+    # design과 code에 따라서 분기 처리
+    return _GUIDEMAP_DIR / f"{project_name}_{kind}.md"
 
 
 def guidemap_exists(project_name: str) -> bool:
-    return _get_guidemap_path(project_name).exists()
-
-
-_DESIGN_SECTIONS = {"## Directory Guide", "## Naming Conventions"}
+    # design이 있다면 code도 있다고 확정
+    return _get_guidemap_path(project_name, "design").exists()
 
 
 def get_design_context(project_name: str) -> str | None:
-    """design agent용 섹션(Directory Guide, Naming Conventions)만 추출해서 반환."""
-    path = _get_guidemap_path(project_name)
+    # design 파일 반환
+    path = _get_guidemap_path(project_name, "design")
     if not path.exists():
         return None
-    content = path.read_text(encoding="utf-8")
-    parts = re.split(r"^(## .+)$", content, flags=re.MULTILINE)
-    result = [parts[0]]  # h1 title
-    for i in range(1, len(parts) - 1, 2):
-        if parts[i].strip() in _DESIGN_SECTIONS:
-            result.append(parts[i] + parts[i + 1])
-    return "".join(result)
+    return path.read_text(encoding="utf-8")
 
+
+def _parse_and_save(project_name: str, result_text: str) -> None:
+    # agent 반환 문자 구분 및 저장
+    design = re.search(r"<design>(.*?)</design>", result_text, re.DOTALL)
+    code = re.search(r"<code>(.*?)</code>", result_text, re.DOTALL)
+    
+    if not design or not code:
+        raise ValueError("Guidemap 생성 실패입니다.")
+        
+    for kind, content in [("design", design.group(1)), ("code", code.group(1))]:
+        path = _get_guidemap_path(project_name, kind)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content.strip(), encoding="utf-8")
+        
+        logger.info("Guidemap 경로 %s", path)
+        
 
 def _build_prompt(project: Project) -> str:
+    # 프롬프트 조합
     return load_prompt(
         "guidemap_agent.md",
         local_repo_path=project.local_repo_path,
         project_stack=project.project_stack,
         framework=project.framework or "unspecified",
     )
-
-
-def _save_guidemap(project_name: str, content: str) -> Path:
-    path = _get_guidemap_path(project_name)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
-    logger.info("Guidemap written to %s", path)
-    return path
 
 
 async def generate_guidemap(project: Project) -> None:
@@ -66,15 +75,12 @@ async def generate_guidemap(project: Project) -> None:
     """
     project_id = project.id
 
-    async def broadcast(msg: dict) -> None:
-        await ws_manager.broadcast(project_id, msg)
+    broadcast = make_broadcaster(project_id)
 
-    await broadcast({"type": "guidemap_generating", "project_id": project_id})
+    await broadcast(msg_guidemap_generating(project_id))
 
     try:
         prompt = _build_prompt(project)
-        
-        logging.info("프롬프트", prompt)
 
         options = ClaudeAgentOptions(
             model="claude-sonnet-4-6",
@@ -87,11 +93,12 @@ async def generate_guidemap(project: Project) -> None:
         result_text: str | None = None
 
         async for message in query(prompt=prompt, options=options):
-            try:
-                msg_data = message.model_dump() if hasattr(message, "model_dump") else str(message)
-            except Exception:
-                msg_data = str(message)
-            await broadcast({"type": "agent_message", "project_id": project_id, "message": msg_data})
+            await broadcast(
+                msg_agent_message(
+                    extract_agent_msg_data(message),
+                    project_id=project_id
+                )
+            )
 
             if hasattr(message, "result") and message.result:
                 result_text = message.result
@@ -99,18 +106,16 @@ async def generate_guidemap(project: Project) -> None:
         if not result_text:
             raise ValueError("Guidemap agent returned no content.")
 
-        _save_guidemap(project.name, result_text)
+        # 내용 저장
+        _parse_and_save(
+            project_name=project.name,
+            result_text=result_text
+        )
 
-        await broadcast({
-            "type": "guidemap_generated",
-            "project_id": project_id,
-            "path": str(_get_guidemap_path(project.name)),
-        })
+        await broadcast(
+            msg_guidemap_generated(project_id)
+        )
 
     except Exception as exc:
         logger.exception("Guidemap generation failed (project_id=%s): %s", project_id, exc)
-        await broadcast({
-            "type": "guidemap_failed",
-            "project_id": project_id,
-            "error": str(exc),
-        })
+        await broadcast(msg_guidemap_failed(project_id, str(exc)))

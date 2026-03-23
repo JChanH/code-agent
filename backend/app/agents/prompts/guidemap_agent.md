@@ -14,12 +14,13 @@ Analyze the existing project at `$local_repo_path` and produce a structured guid
 
 ## Output Format
 
-Return the complete markdown content of the guidemap as your final response.
-Do NOT write files yourself — just return the markdown text.
+Return the guidemap split into two tagged blocks as your final response.
+Do NOT write files yourself - just return the text.
 
 The markdown must contain these sections:
 
 ```
+<design>
 # Existing Project Guide
 
 ## Directory Guide
@@ -30,7 +31,9 @@ Format: `relative/path/` — what goes here (e.g. `router/` — HTTP route handl
 - File naming (e.g. snake_case, suffix rules like _service.py, _router.py)
 - Class naming
 - Method naming
+</design>
 
+<code>
 ## Response Format
 - Class name and location of the response wrapper
 - Field names and their purpose (success, data, error, etc.)
@@ -50,6 +53,7 @@ Format: `relative/path/` — what goes here (e.g. `router/` — HTTP route handl
 List only core infrastructure files (max 10) with relative paths and one-line descriptions.
 Include: entry point, config, shared base classes, response wrapper, DB utility.
 Exclude: all domain-specific routers, services, repositories, agents.
+</code>
 ```
 
 ## Rules

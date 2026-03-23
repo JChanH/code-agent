@@ -6,7 +6,7 @@ import {
 import type { DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import {
-  Upload, FileText, Image, Plus, X, Loader, AlertCircle, CheckCircle,
+  Upload, FileText, Plus, X, Loader, AlertCircle, CheckCircle,
 } from 'lucide-react';
 import DesignTaskCard from '../../components/kanban/DesignTaskCard';
 import { useTaskStore } from '../../stores';
@@ -231,7 +231,6 @@ export default function DesignPhase({ projectId }: { projectId: string }) {
   const [showTextModal, setShowTextModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -387,7 +386,8 @@ export default function DesignPhase({ projectId }: { projectId: string }) {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
     if (!file) return;
-    handleFileUpload(file, file.type.startsWith('image/') ? 'image' : 'document');
+    if (file.type.startsWith('image/')) return;
+    handleFileUpload(file, 'document');
   }
 
   // ── 렌더 ─────────────────────────────────────────────────────────────────────
@@ -420,9 +420,6 @@ export default function DesignPhase({ projectId }: { projectId: string }) {
       <input ref={fileInputRef} type="file" accept=".pdf,.docx,.txt,.md" style={{ display: 'none' }}
         onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, 'document'); e.target.value = ''; }}
       />
-      <input ref={imageInputRef} type="file" accept="image/*" style={{ display: 'none' }}
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, 'image'); e.target.value = ''; }}
-      />
 
       {error && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#450a0a', color: '#fca5a5', border: '1px solid #7f1d1d', borderRadius: 6, padding: '8px 12px', fontSize: 13, marginBottom: 8 }}>
@@ -446,10 +443,7 @@ export default function DesignPhase({ projectId }: { projectId: string }) {
         <button className="btn-sm" style={{ gap: 6, flexShrink: 0 }} onClick={() => fileInputRef.current?.click()}>
           <FileText size={12} /> 파일 업로드
         </button>
-        <button className="btn-sm" style={{ gap: 6, flexShrink: 0 }} onClick={() => imageInputRef.current?.click()}>
-          <Image size={12} /> 이미지
-        </button>
-        <button className="btn-sm" style={{ gap: 6, flexShrink: 0 }} onClick={() => setShowTextModal(true)}>
+<button className="btn-sm" style={{ gap: 6, flexShrink: 0 }} onClick={() => setShowTextModal(true)}>
           <Plus size={12} /> 텍스트 입력
         </button>
         <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 'auto' }}>

@@ -3,7 +3,8 @@
 from fastapi import WebSocket
 from typing import Any
 import json
-import asyncio
+
+from app.websocket.messages import BroadcastFn as BroadcastFn  # re-export
 
 
 class ConnectionManager:
@@ -57,3 +58,10 @@ class ConnectionManager:
 
 # Singleton instance
 ws_manager = ConnectionManager()
+
+
+def make_broadcaster(project_id: str) -> BroadcastFn:
+    """project_id에 바인딩된 broadcast 함수를 반환합니다."""
+    async def _broadcast(msg: dict[str, Any]) -> None:
+        await ws_manager.broadcast(project_id, msg)
+    return _broadcast

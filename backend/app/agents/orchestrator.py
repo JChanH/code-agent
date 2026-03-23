@@ -21,7 +21,8 @@ from app.config import get_settings
 from app.repositories import task_repository, project_repository
 from app.utils.db_handler_sqlalchemy import db_conn
 from app.utils.git import GitService
-from app.websocket import ws_manager
+from app.websocket import make_broadcaster
+from app.websocket.messages import msg_task_update, msg_review_result
 
 logger = logging.getLogger(__name__)
 
@@ -71,8 +72,7 @@ async def _run_task_inner(task_id: str) -> None:
         logger.error("Project not found: %s", task.project_id)
         return
 
-    async def broadcast(msg: dict) -> None:
-        await ws_manager.broadcast(project.id, msg)
+    broadcast = make_broadcaster(project.id)
 
     review_context: dict | None = None
 
@@ -81,56 +81,37 @@ async def _run_task_inner(task_id: str) -> None:
 
         # ── 1. Coding phase ───────────────────────────────────────────────────
         await _update_task_status(task_id, "coding")
-        await broadcast({
-            "type": "task_update",
-            "task_id": task_id,
-            "status": "coding",
-            "attempt": attempt,
-        })
+        await broadcast(msg_task_update(task_id, "coding", attempt=attempt))
 
         try:
             await run_code_agent(task, project, review_context=review_context, broadcast=broadcast)
         except Exception as exc:
             logger.exception("code_agent failed (task=%s, attempt=%d): %s", task_id, attempt, exc)
             await _update_task_status(task_id, "failed")
-            await broadcast({
-                "type": "task_update",
-                "task_id": task_id,
-                "status": "failed",
-                "error": str(exc),
-            })
+            await broadcast(msg_task_update(task_id, "failed", error=str(exc)))
             return
 
         # ── 2. Review phase ───────────────────────────────────────────────────
         await _update_task_status(task_id, "reviewing")
-        await broadcast({
-            "type": "task_update",
-            "task_id": task_id,
-            "status": "reviewing",
-            "attempt": attempt,
-        })
+        await broadcast(msg_task_update(task_id, "reviewing", attempt=attempt))
 
         try:
             result: ReviewResult = await run_review_agent(task, project, broadcast=broadcast)
         except Exception as exc:
             logger.exception("review_agent failed (task=%s, attempt=%d): %s", task_id, attempt, exc)
             await _update_task_status(task_id, "failed")
-            await broadcast({
-                "type": "task_update",
-                "task_id": task_id,
-                "status": "failed",
-                "error": str(exc),
-            })
+            await broadcast(msg_task_update(task_id, "failed", error=str(exc)))
             return
 
-        await broadcast({
-            "type": "review_result",
-            "task_id": task_id,
-            "attempt": attempt,
-            "passed": result.passed,
-            "test_output": result.test_output,
-            "feedback": result.overall_feedback,
-        })
+        await broadcast(
+            msg_review_result(
+                task_id=task_id,
+                attempt=attempt,
+                passed=result.passed,
+                test_output=result.test_output,
+                feedback=result.overall_feedback,
+            )
+        )
 
         # ── 3. Pass → auto-commit → done ──────────────────────────────────────
         if result.passed:
@@ -156,11 +137,7 @@ async def _run_task_inner(task_id: str) -> None:
                         t.git_commit_hash = commit_hash
                     await session.flush()
 
-            await broadcast({
-                "type": "task_update",
-                "task_id": task_id,
-                "status": "done",
-            })
+            await broadcast(msg_task_update(task_id, "done"))
             logger.info("Task completed (task=%s, attempt=%d)", task_id, attempt)
             return
 
@@ -177,10 +154,5 @@ async def _run_task_inner(task_id: str) -> None:
 
     # ── 5. Max retries exceeded → failed ──────────────────────────────────────
     await _update_task_status(task_id, "failed")
-    await broadcast({
-        "type": "task_update",
-        "task_id": task_id,
-        "status": "failed",
-        "error": f"Max retries exceeded ({MAX_RETRIES})",
-    })
+    await broadcast(msg_task_update(task_id, "failed", error=f"Max retries exceeded ({MAX_RETRIES})"))
     logger.error("Task exceeded max retries (task=%s)", task_id)

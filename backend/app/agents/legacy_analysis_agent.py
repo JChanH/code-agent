@@ -8,7 +8,14 @@ from pathlib import Path
 
 from claude_agent_sdk import query, ClaudeAgentOptions
 
-from app.websocket import ws_manager
+from app.websocket import make_broadcaster
+from app.websocket.messages import (
+    extract_agent_msg_data,
+    msg_agent_message,
+    msg_legacy_analyze_failed,
+    msg_legacy_analyzed,
+    msg_legacy_analyzing,
+)
 from app.agents.prompts import load_prompt
 
 logger = logging.getLogger(__name__)
@@ -54,10 +61,9 @@ async def analyze_legacy_code(session_id: str, code_path: str) -> None:
     - 결과는 ANALYSIS_SESSIONS와 analyze_result/ 파일로 저장됩니다.
     """
 
-    async def broadcast(msg: dict) -> None:
-        await ws_manager.broadcast(session_id, msg)
+    broadcast = make_broadcaster(session_id)
 
-    await broadcast({"type": "legacy_analyzing", "session_id": session_id})
+    await broadcast(msg_legacy_analyzing(session_id))
 
     try:
         prompt = load_prompt("legacy_analysis_api.md", code_path=code_path)
@@ -72,11 +78,7 @@ async def analyze_legacy_code(session_id: str, code_path: str) -> None:
         result_text: str | None = None
 
         async for message in query(prompt=prompt, options=options):
-            try:
-                msg_data = message.model_dump() if hasattr(message, "model_dump") else str(message)
-            except Exception:
-                msg_data = str(message)
-            await broadcast({"type": "agent_message", "session_id": session_id, "message": msg_data})
+            await broadcast(msg_agent_message(extract_agent_msg_data(message), session_id=session_id))
 
             if hasattr(message, "result") and message.result:
                 result_text = message.result
@@ -103,19 +105,11 @@ async def analyze_legacy_code(session_id: str, code_path: str) -> None:
             }
         ]
 
-        await broadcast({
-            "type": "legacy_analyzed",
-            "session_id": session_id,
-            "sections": sections,
-        })
+        await broadcast(msg_legacy_analyzed(session_id, sections))
 
     except Exception as exc:
         logger.exception("Legacy analysis failed (session_id=%s): %s", session_id, exc)
-        await broadcast({
-            "type": "legacy_analyze_failed",
-            "session_id": session_id,
-            "error": str(exc),
-        })
+        await broadcast(msg_legacy_analyze_failed(session_id, str(exc)))
 
 
 async def chat_with_legacy_code(code_path: str, question: str, focused_file: str | None = None) -> dict:

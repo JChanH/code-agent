@@ -12,6 +12,11 @@ import redis.asyncio as aioredis
 from app.models.runtime_error import RuntimeErrorRecord
 from app.repositories import runtime_error_repository
 from app.websocket import ws_manager
+from app.websocket.messages import (
+    msg_runtime_error,
+    msg_runtime_error_agent_message,
+    msg_runtime_error_update,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +107,7 @@ class RuntimeErrorConsumer:
         logger.info("Runtime error saved (analyzing): %s [%s] %s", saved.id, saved.error_code, saved.project_id)
 
         # WebSocket으로 analyzing 상태 즉시 전송
-        await ws_manager.broadcast(project_id, _build_ws_payload(saved))
+        await ws_manager.broadcast(project_id, msg_runtime_error(_build_runtime_error_data(saved)))
 
         # 백그라운드로 agent 분석 실행
         asyncio.create_task(
@@ -116,10 +121,7 @@ async def _run_analysis(record: RuntimeErrorRecord) -> None:
     from app.agents.runtime_error_agent import analyze_runtime_error
     from app.repositories import project_repository
 
-    """
-        TODO: task 추가 버튼을 누루며 즉시 개발에 inprocess 부분에 넣기
-    """
-    
+    # TODO: task 추가 버튼을 누루며 즉시 개발에 inprocess 부분에 넣기
 
     try:
         # project_id(프로젝트 이름)로 프로젝트 조회 → local_repo_path 획득
@@ -130,17 +132,14 @@ async def _run_analysis(record: RuntimeErrorRecord) -> None:
                 record.project_id, record.id,
             )
             await runtime_error_repository.update_status(record.id, "ignored")
-            await ws_manager.broadcast(record.project_id, {
-                "type": "runtime_error_update",
-                "data": {"id": record.id, "status": "ignored", "fix_suggestion": None},
-            })
+            await ws_manager.broadcast(record.project_id, msg_runtime_error_update(record.id, "ignored"))
             return
 
         async def _on_progress(log_line: str) -> None:
-            await ws_manager.broadcast(record.project_id, {
-                "type": "runtime_error_agent_message",
-                "data": {"error_id": record.id, "message": log_line},
-            })
+            await ws_manager.broadcast(
+                record.project_id,
+                msg_runtime_error_agent_message(record.id, log_line),
+            )
 
         fix_suggestion = await analyze_runtime_error(
             error_id=record.id,
@@ -161,39 +160,29 @@ async def _run_analysis(record: RuntimeErrorRecord) -> None:
 
         if updated:
             logger.info("Runtime error resolved: %s", updated.id)
-            await ws_manager.broadcast(record.project_id, {
-                "type": "runtime_error_update",
-                "data": {
-                    "id": updated.id,
-                    "status": updated.status,
-                    "fix_suggestion": updated.fix_suggestion,
-                },
-            })
+            await ws_manager.broadcast(
+                record.project_id,
+                msg_runtime_error_update(updated.id, updated.status, fix_suggestion=updated.fix_suggestion),
+            )
 
     except Exception as exc:
         logger.exception("Analysis task failed for error_id=%s: %s", record.id, exc)
         await runtime_error_repository.update_status(record.id, "failed")
-        await ws_manager.broadcast(record.project_id, {
-            "type": "runtime_error_update",
-            "data": {"id": record.id, "status": "failed"},
-        })
+        await ws_manager.broadcast(record.project_id, msg_runtime_error_update(record.id, "failed"))
 
 
-def _build_ws_payload(record: RuntimeErrorRecord) -> dict:
+def _build_runtime_error_data(record: RuntimeErrorRecord) -> dict:
     return {
-        "type": "runtime_error",
-        "data": {
-            "id": record.id,
-            "error_code": record.error_code,
-            "message": record.message,
-            "project_id": record.project_id,
-            "level": record.level,
-            "error_timestamp": record.error_timestamp.isoformat() if record.error_timestamp else None,
-            "metadata": record.metadata_,
-            "fix_suggestion": record.fix_suggestion,
-            "status": record.status,
-            "created_at": record.created_at.isoformat(),
-        },
+        "id": record.id,
+        "error_code": record.error_code,
+        "message": record.message,
+        "project_id": record.project_id,
+        "level": record.level,
+        "error_timestamp": record.error_timestamp.isoformat() if record.error_timestamp else None,
+        "metadata": record.metadata_,
+        "fix_suggestion": record.fix_suggestion,
+        "status": record.status,
+        "created_at": record.created_at.isoformat(),
     }
 
 
