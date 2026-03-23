@@ -160,23 +160,13 @@ export interface LogEntry {
 
 // ── WebSocket Messages ────────────────────────────────────────────────────────
 
-export interface WsMessage {
-  type: string;
-  data: unknown;
-}
-
-export interface WsTaskUpdate {
-  task_id: string;
-  status: TaskStatus;
-  progress?: number;
-  message?: string;
-}
-
-export interface WsSpecAnalyzing {
+export interface WsMsgSpecAnalyzing {
+  type: 'spec_analyzing';
   spec_id: string;
 }
 
-export interface WsSpecAnalyzed {
+export interface WsMsgSpecAnalyzed {
+  type: 'spec_analyzed';
   spec_id: string;
   analysis_summary: string;
   tasks: Array<{
@@ -189,10 +179,107 @@ export interface WsSpecAnalyzed {
   }>;
 }
 
-export interface WsSpecAnalyzeFailed {
+export interface WsMsgSpecAnalyzeFailed {
+  type: 'spec_analyze_failed';
   spec_id: string;
   error: string;
 }
+
+export interface WsMsgTaskUpdate {
+  type: 'task_update';
+  task_id: string;
+  status: TaskStatus;
+  attempt?: number;
+  error?: string;
+}
+
+export interface WsMsgReviewResult {
+  type: 'review_result';
+  task_id: string;
+  attempt: number;
+  passed: boolean;
+  test_output: string;
+  feedback: string;
+}
+
+export interface WsMsgAgentMessage {
+  type: 'agent_message';
+  message: unknown;
+  spec_id?: string;
+  task_id?: string;
+  project_id?: string;
+  session_id?: string;
+  agent?: string;
+}
+
+export interface WsMsgGuidemapGenerating {
+  type: 'guidemap_generating';
+  project_id: string;
+}
+
+export interface WsMsgGuidemapGenerated {
+  type: 'guidemap_generated';
+  project_id: string;
+}
+
+export interface WsMsgGuidemapFailed {
+  type: 'guidemap_failed';
+  project_id: string;
+  error: string;
+}
+
+export interface WsMsgLegacyAnalyzing {
+  type: 'legacy_analyzing';
+  session_id: string;
+}
+
+export interface WsMsgLegacyAnalyzed {
+  type: 'legacy_analyzed';
+  session_id: string;
+  sections: Array<{ title: string; content: string }>;
+}
+
+export interface WsMsgLegacyAnalyzeFailed {
+  type: 'legacy_analyze_failed';
+  session_id: string;
+  error: string;
+}
+
+export interface WsMsgRuntimeError {
+  type: 'runtime_error';
+  data: RuntimeError;
+}
+
+export interface WsMsgRuntimeErrorUpdate {
+  type: 'runtime_error_update';
+  data: { id: string; status: RuntimeErrorStatus; fix_suggestion?: string | null };
+}
+
+export interface WsMsgRuntimeErrorAgentMessage {
+  type: 'runtime_error_agent_message';
+  data: { error_id: string; message: string };
+}
+
+export type WsMessage =
+  | WsMsgSpecAnalyzing
+  | WsMsgSpecAnalyzed
+  | WsMsgSpecAnalyzeFailed
+  | WsMsgTaskUpdate
+  | WsMsgReviewResult
+  | WsMsgAgentMessage
+  | WsMsgGuidemapGenerating
+  | WsMsgGuidemapGenerated
+  | WsMsgGuidemapFailed
+  | WsMsgLegacyAnalyzing
+  | WsMsgLegacyAnalyzed
+  | WsMsgLegacyAnalyzeFailed
+  | WsMsgRuntimeError
+  | WsMsgRuntimeErrorUpdate
+  | WsMsgRuntimeErrorAgentMessage;
+
+// Legacy aliases (기존 코드 호환)
+/** @deprecated WsMsgSpecAnalyzed 사용 */
+export type WsSpecAnalyzed = WsMsgSpecAnalyzed;
 
 // ── Runtime Error ─────────────────────────────────────────────────────────────
 
