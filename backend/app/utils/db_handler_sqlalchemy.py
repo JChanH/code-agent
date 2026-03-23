@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import json
+import logging
 
 from app.config import get_settings
 
 from contextlib import asynccontextmanager  # 비동기 컨텍스트 메니저 사용 doco
 from typing import AsyncGenerator  # 비동기 제너레이터
 from functools import wraps  # 데코에서 함수 정보 유지
+
+logger = logging.getLogger(__name__)
 
 from sqlalchemy.ext.asyncio import (
     AsyncSession,  # 비동기 세션 객체 타입
@@ -57,20 +60,20 @@ class DBManager:
         정상 종료 시 자동으로 commit, 예외 발생 시 자동으로 rollback
         """
         session_id = id(self._session_maker)  # 세션 객체의 고유 ID
-        print(f"[Session {session_id}] 세션 생성 시작")
+        logger.debug("[Session %s] 세션 생성 시작", session_id)
 
         async with self._session_maker() as session:
             try:
-                print(f"[Session {session_id}] 세션 열림 - DB 연결 준비 완료")
+                logger.debug("[Session %s] 세션 열림 - DB 연결 준비 완료", session_id)
                 yield session  # 코루틴만 일시 정지 상태
                 await session.commit()  # 정상 종료 시 자동 commit
-                print(f"[Session {session_id}] 작업 완료 - 커밋 후 세션 정상 종료")
+                logger.debug("[Session %s] 작업 완료 - 커밋 후 세션 정상 종료", session_id)
             except Exception as e:
-                print(f"[Session {session_id}] 에러 발생: {str(e)} - 롤백 실행")
+                logger.error("[Session %s] 에러 발생: %s - 롤백 실행", session_id, e)
                 await session.rollback()
                 raise
             finally:
-                print(f"[Session {session_id}] 세션 닫힘 - 리소스 해제")
+                logger.debug("[Session %s] 세션 닫힘 - 리소스 해제", session_id)
 
     # ---------------------------
     # Transaction (Context Manager)

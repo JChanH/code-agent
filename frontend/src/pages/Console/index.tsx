@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Play, Square, Trash2 } from 'lucide-react';
-import { MOCK_LOGS } from '../../mock/data';
+import { Play, Square, Trash2, Info } from 'lucide-react';
 
 interface Props { projectId: string; }
 
@@ -25,7 +24,7 @@ const LEVEL_LABEL: Record<string, string> = {
 };
 
 export default function ConsolePage({ projectId: _projectId }: Props) {
-  const [logs, setLogs] = useState<LogLine[]>(MOCK_LOGS);
+  const [logs, setLogs] = useState<LogLine[]>([]);
   const [input, setInput] = useState('');
   const [running, setRunning] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -40,7 +39,7 @@ export default function ConsolePage({ projectId: _projectId }: Props) {
     setLogs((prev) => [
       ...prev,
       { time: now, level: 'info', msg: `> ${input}` },
-      { time: now, level: 'info', msg: '에이전트 명령을 실행합니다... (API 연결 필요)' },
+      { time: now, level: 'warn', msg: '직접 명령 실행 기능은 개발 예정입니다. Dev Phase에서 태스크를 실행하세요.' },
     ]);
     setInput('');
   }
@@ -66,6 +65,11 @@ export default function ConsolePage({ projectId: _projectId }: Props) {
         <button className="icon-btn" title="로그 지우기" onClick={() => setLogs([])}>
           <Trash2 size={15} />
         </button>
+      </div>
+
+      <div className="console-notice">
+        <Info size={13} />
+        <span>에이전트 실행 로그는 하단 패널 <strong>로그</strong> 탭에서 실시간으로 확인할 수 있습니다. 직접 명령 실행 기능은 개발 예정입니다.</span>
       </div>
 
       <div className="console-output">

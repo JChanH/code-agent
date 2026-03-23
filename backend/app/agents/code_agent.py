@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 Broadcaster = Callable[[dict], Awaitable[None]]
 
+# NOTE: 임시
 _GUIDELINE_PATH = Path(__file__).parent / "guidemap" / "PYTHON_FASTAPI_BACKEND_GUIDELINE.md"
 
 
