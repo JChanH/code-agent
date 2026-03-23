@@ -61,8 +61,8 @@ def _save_guidemap(project_name: str, content: str) -> Path:
 
 async def generate_guidemap(project: Project) -> None:
     """
-    Runs the guidemap agent for an existing project.
-    Broadcasts guidemap_generating → guidemap_generated / guidemap_failed via WebSocket.
+    * 기존 프로젝트에 대해서 guidemap을 생성하여 로컬에 저장합니다.
+    * 내용은 websocket을 통해서 전달합니다.
     """
     project_id = project.id
 
@@ -73,8 +73,12 @@ async def generate_guidemap(project: Project) -> None:
 
     try:
         prompt = _build_prompt(project)
+        
+        logging.info("프롬프트", prompt)
 
         options = ClaudeAgentOptions(
+            model="claude-sonnet-4-6",
+            # model="claude-haiku-4-5-20251001",
             allowed_tools=["Read", "Glob", "Grep"],
             permission_mode="bypassPermissions",
             max_turns=30,

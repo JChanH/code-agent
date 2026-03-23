@@ -5,32 +5,10 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 from app.agents.design_agent import analyze_spec_and_create_tasks
 from app.agents.orchestrator import run_task
 from app.repositories import spec_repository, task_repository, project_repository
-from app.schemas import ProjectCreate, ProjectResponse
 from app.schemas.common import ApiResponse
-from app.services import projects_service
 from app.services.guidemap_service import trigger_guidemap_generation
 
 agent_router = APIRouter(prefix="/agent", tags=["agent"])
-
-
-@agent_router.post("/projects", response_model=ApiResponse[ProjectResponse])
-async def create_project(
-    body: ProjectCreate,
-    background_tasks: BackgroundTasks,
-) -> ApiResponse[ProjectResponse]:
-    """
-    새로운 프로젝트를 생성합니다.
-
-    Args:
-        body (ProjectCreate): 생성할 프로젝트 정보 (이름, 설명 등)
-
-    Returns:
-        ApiResponse[ProjectResponse]: 생성된 프로젝트 정보를 담은 공통 응답 객체
-    """
-    project = await projects_service.create_project(body)
-    if body.project_type == "existing" and body.local_repo_path:
-        background_tasks.add_task(trigger_guidemap_generation, project.id)
-    return ApiResponse.ok(project)
 
 
 @agent_router.post("/run/{task_id}")
