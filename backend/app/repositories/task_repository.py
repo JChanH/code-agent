@@ -12,7 +12,7 @@ async def find_by_project(project_id: str, session: AsyncSession | None = None) 
         result = await s.execute(
             select(Task)
             .where(Task.project_id == project_id)
-            .order_by(Task.sort_order, Task.created_at)
+            .order_by(Task.created_at)
         )
         return result.scalars().all()
 
@@ -31,5 +31,6 @@ async def add(task: Task, session: AsyncSession | None = None) -> Task:
         return task
 
 
-def delete(task: Task, session: AsyncSession) -> None:
-    session.delete(task)
+async def delete(task: Task, session: AsyncSession | None = None) -> None:
+    async with db_conn.transaction(session) as s:
+        await s.delete(task)
