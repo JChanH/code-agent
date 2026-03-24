@@ -17,7 +17,7 @@ from app.models import Spec, Project, Task
 from app.repositories import spec_repository, project_repository
 from app.websocket import make_broadcaster
 from app.websocket.messages import (
-    extract_agent_msg_data,
+    extract_meaningful_message,
     msg_agent_message,
     msg_spec_analyzed,
     msg_spec_analyze_failed,
@@ -71,8 +71,8 @@ _FORMAT_TOOL: dict[str, Any] = {
 }
 
 
-def _get_stack_context(project: Project) -> str:
-    if guidemap_exists(project.name):
+def _get_stack_context(project: Project, use_guidemap: bool = True) -> str:
+    if use_guidemap and guidemap_exists(project.name):
         design_context = get_design_context(project.name)
         return (
             f"- This is an existing project.\n"
@@ -82,13 +82,14 @@ def _get_stack_context(project: Project) -> str:
     return ""
 
 
-def _build_prompt(spec_content: str, project: Project) -> str:
-    stack_context = _get_stack_context(project)
+def _build_prompt(spec_content: str, project: Project, use_guidemap: bool = True) -> str:
+    stack_context = _get_stack_context(project, use_guidemap=use_guidemap)
 
     codebase_section = ""
     if project.local_repo_path:
         guidemap_ready = (
-            project.project_type == "existing"
+            use_guidemap
+            and project.project_type == "existing"
             and guidemap_exists(project.name)
         )
         if not guidemap_ready:
@@ -203,12 +204,16 @@ def _format_with_anthropic(free_text: str) -> dict:
     raise ValueError("Formatting step returned no tool_use block.")
 
 
-async def analyze_spec_and_create_tasks(spec_id: str) -> None:
+async def analyze_spec_and_create_tasks(spec_id: str, use_guidemap: bool = False) -> None:
     """
     Spec을 분석하고 Task 목록을 자동 생성합니다.
 
     1단계: claude-agent-sdk로 자유 분석 (output_format 없음)
     2단계: anthropic API + tool_choice로 JSON 포맷팅
+
+    Args:
+        spec_id: 분석할 Spec ID
+        use_guidemap: False로 설정하면 guidemap을 무시하고 분석합니다.
     """
     # spec + project 조회
     spec = await spec_repository.find_by_id(spec_id)
@@ -230,20 +235,26 @@ async def analyze_spec_and_create_tasks(spec_id: str) -> None:
 
     try:
         spec_content = await _load_spec_content(spec)
-        prompt = _build_prompt(spec_content, project)
+        prompt = _build_prompt(
+            spec_content,
+            project,
+            use_guidemap=use_guidemap
+        )
 
         # 1단계: output_format 없이 자유 분석
         options = ClaudeAgentOptions(
             model="claude-sonnet-4-6",
             allowed_tools=["Read", "Glob", "Grep"],
-            permission_mode="bypassPermissions",
+            permission_mode="default",  # bypassPermissions
             max_turns=30,
         )
 
         free_text_parts: list[str] = []
 
         async for message in query(prompt=prompt, options=options):
-            await broadcast(msg_agent_message(extract_agent_msg_data(message), spec_id=spec_id))
+            payload = extract_meaningful_message(message)
+            if payload is not None:
+                await broadcast(msg_agent_message(payload, spec_id=spec_id))
 
             if hasattr(message, "result") and message.result:
                 free_text_parts.append(message.result)

@@ -38,12 +38,70 @@ class WsMsgType:
     RUNTIME_ERROR_AGENT_MESSAGE = "runtime_error_agent_message"
 
 
-# 메시지 직열화
+# 메시지 직열화 (전체 덤프 — 내부 디버깅용)
 def extract_agent_msg_data(message: Any) -> Any:
     try:
         return message.model_dump() if hasattr(message, "model_dump") else str(message)
     except Exception:
         return str(message)
+
+
+# 의미 있는 메시지만 추출 — None 반환 시 브로드캐스트 생략
+# TODO: key - valude 메핑으로 바꾸기
+def extract_meaningful_message(message: Any) -> dict | None:
+    """
+    클라이언트에 표시할 의미 있는 메시지만 추출합니다.
+
+    반환 형식:
+      {"kind": "text", "text": "..."}                           — 에이전트 텍스트
+      {"kind": "progress", "tool": "...", "desc": "..."}        — 툴 사용 진행 상황
+      {"kind": "task_done", "status": "...", "summary": "..."}  — 서브태스크 완료
+      {"kind": "result", "text": "..."}                         — 전체 분석 최종 결과
+    None 반환 시 브로드캐스트 하지 않습니다.
+    """
+    cls_name = type(message).__name__
+
+    if cls_name == "AssistantMessage":
+        items = []
+        for block in getattr(message, "content", []):
+            block_type = type(block).__name__
+            if block_type == "TextBlock":
+                text = getattr(block, "text", "").strip()
+                if text:
+                    items.append({"type": "text", "text": text})
+            elif block_type == "ToolUseBlock":
+                items.append({
+                    "type": "tool_use",
+                    "name": getattr(block, "name", ""),
+                    "input": getattr(block, "input", {}),
+                })
+            elif block_type == "ThinkingBlock":
+                thinking = getattr(block, "thinking", "").strip()
+                if thinking:
+                    items.append({"type": "thinking", "thinking": thinking})
+        if not items:
+            return None
+        return {"kind": "assistant", "content": items}
+
+    if cls_name == "TaskProgressMessage":
+        tool = getattr(message, "last_tool_name", None)
+        desc = getattr(message, "description", "")
+        return {"kind": "progress", "tool": tool, "desc": desc}
+
+    if cls_name == "TaskNotificationMessage":
+        summary = getattr(message, "summary", None)
+        status = getattr(message, "status", "")
+        if not summary or not str(summary).strip():
+            return None
+        return {"kind": "task_done", "status": status, "summary": str(summary).strip()}
+
+    if cls_name == "ResultMessage":
+        result = getattr(message, "result", None)
+        if not result or not str(result).strip():
+            return None
+        return {"kind": "result", "text": str(result).strip()}
+
+    return None
 
 
 # 스펙서 분석 메시지 
