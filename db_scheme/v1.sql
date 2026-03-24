@@ -57,31 +57,32 @@ CREATE TABLE specs (
 -- ============================================
 -- Task 관리 (설계 → 개발 연결점)
 -- ============================================
-CREATE TABLE tasks (
-    id                  VARCHAR(36) PRIMARY KEY,
-    project_id          VARCHAR(36) NOT NULL,
-    spec_id             VARCHAR(36),                -- 어떤 spec에서 도출되었는지
-    assigned_user_id    VARCHAR(36),                -- 담당 사용자
-    title               VARCHAR(500) NOT NULL,
-    description         TEXT NOT NULL,
-    acceptance_criteria JSON,                       -- ["조건1", "조건2", ...]
-    target_files        JSON,                       -- 수정 대상 파일 목록
-    priority            ENUM('low', 'medium', 'high', 'critical') DEFAULT 'medium',
-    complexity          ENUM('trivial', 'low', 'medium', 'high', 'very_high') DEFAULT 'medium',
-    status              ENUM('plan_reviewing', 'confirmed',
-                             'coding', 'reviewing', 'done', 'failed') DEFAULT 'plan_reviewing',
-    sort_order          INT DEFAULT 0,
-    auto_approve        BOOLEAN DEFAULT FALSE,
-    auto_approve_config JSON,                       -- 자동 승인 조건
-    git_commit_hash     VARCHAR(40),                -- 완료 시 커밋 해시
-    started_at          TIMESTAMP NULL,
-    completed_at        TIMESTAMP NULL,
-    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-    FOREIGN KEY (spec_id) REFERENCES specs(id) ON DELETE SET NULL,
-    FOREIGN KEY (assigned_user_id) REFERENCES users(id) ON DELETE SET NULL
-);
+-- test_data.tasks definition
+
+CREATE TABLE `tasks` (
+  `id` varchar(36) NOT NULL,
+  `project_id` varchar(36) NOT NULL,
+  `spec_id` varchar(36) DEFAULT NULL,
+  `assigned_user_id` varchar(36) DEFAULT NULL,
+  `title` varchar(500) NOT NULL,
+  `description` text NOT NULL,
+  `status` enum('plan_reviewing','confirmed','coding','reviewing','done','failed') DEFAULT 'plan_reviewing',
+  `acceptance_criteria` longtext DEFAULT NULL COMMENT 'task 성공 조건',
+  `target_files` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '작업해야하는 파일 경로',
+  `implementation_steps` longtext DEFAULT NULL,
+  `git_commit_hash` varchar(40) DEFAULT NULL,
+  `started_at` datetime DEFAULT NULL COMMENT '시작 시분초',
+  `completed_at` datetime DEFAULT NULL COMMENT '완료 시분초',
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `project_id` (`project_id`),
+  KEY `spec_id` (`spec_id`),
+  KEY `assigned_user_id` (`assigned_user_id`),
+  CONSTRAINT `tasks_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `tasks_ibfk_2` FOREIGN KEY (`spec_id`) REFERENCES `specs` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `tasks_ibfk_3` FOREIGN KEY (`assigned_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ============================================
 -- 프로젝트 스택 보안 프로파일
