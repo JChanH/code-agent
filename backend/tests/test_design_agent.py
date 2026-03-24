@@ -3,7 +3,6 @@
 Covers:
 - _get_stack_context: all project type / stack combinations
 - _load_spec_content: raw content, file path, docx, missing file, no content
-- _save_db_schema_file: markdown generation and directory creation
 - analyze_spec_and_create_tasks: spec/project not found, success, agent failure
 """
 
@@ -12,7 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import app.agents.design_agent  # ensures module is loaded before patch() resolves it
+import app.agents.design_agent
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -166,87 +165,6 @@ class TestLoadSpecContent:
             assert result == "Extracted paragraph."
 
 
-# ── _save_db_schema_file ───────────────────────────────────────────────────────
-
-class TestSaveDbSchemaFile:
-
-    def test_creates_markdown_with_correct_content(self, tmp_path: Path):
-        """Generated markdown should include the schema overview and all table/column names."""
-        db_schema = {
-            "overview": "E-commerce database schema",
-            "tables": [
-                {
-                    "name": "users",
-                    "description": "Registered user accounts",
-                    "columns": [
-                        {
-                            "name": "id",
-                            "type": "VARCHAR(36)",
-                            "nullable": False,
-                            "description": "Primary key",
-                        },
-                        {
-                            "name": "email",
-                            "type": "VARCHAR(255)",
-                            "nullable": False,
-                            "description": "Unique email address",
-                        },
-                    ],
-                }
-            ],
-        }
-
-        from app.agents.design_agent import _save_db_schema_file
-
-        schema_file = _save_db_schema_file(str(tmp_path), db_schema)
-
-        assert schema_file.exists()
-        content = schema_file.read_text(encoding="utf-8")
-        assert "# DB Schema" in content
-        assert "E-commerce database schema" in content
-        assert "users" in content
-        assert "id" in content
-        assert "email" in content
-
-    def test_creates_nested_directories_automatically(self, tmp_path: Path):
-        """Should create docs/schema/ directories if they do not exist."""
-        nested_root = tmp_path / "deep" / "nested" / "project"
-
-        from app.agents.design_agent import _save_db_schema_file
-
-        schema_file = _save_db_schema_file(str(nested_root), {"overview": "test", "tables": []})
-
-        assert schema_file.exists()
-        assert schema_file.parent.name == "schema"
-
-    def test_nullable_column_marked_correctly(self, tmp_path: Path):
-        """Nullable columns should show 'O' and non-nullable columns should show 'X'."""
-        db_schema = {
-            "overview": "Test schema",
-            "tables": [
-                {
-                    "name": "items",
-                    "columns": [
-                        {"name": "id", "type": "INT", "nullable": False},
-                        {"name": "note", "type": "TEXT", "nullable": True},
-                    ],
-                }
-            ],
-        }
-
-        from app.agents.design_agent import _save_db_schema_file
-
-        schema_file = _save_db_schema_file(str(tmp_path), db_schema)
-        content = schema_file.read_text(encoding="utf-8")
-
-        # id row → nullable=False → "X"; note row → nullable=True → "O"
-        lines = [l for l in content.splitlines() if "| id " in l or "| note " in l]
-        id_line = next(l for l in lines if "| id " in l)
-        note_line = next(l for l in lines if "| note " in l)
-        assert "| X |" in id_line
-        assert "| O |" in note_line
-
-
 # ── analyze_spec_and_create_tasks ──────────────────────────────────────────────
 
 class TestAnalyzeSpecAndCreateTasks:
@@ -279,46 +197,49 @@ class TestAnalyzeSpecAndCreateTasks:
 
             mock_proj_repo.find_by_id.assert_called_once_with(spec.project_id)
 
-    async def test_success_broadcasts_spec_analyzed_with_tasks(self):
+    async def test_success_saves_tasks_and_broadcasts(self):
         """Should save tasks and broadcast spec_analyzed on a successful agent run."""
         spec = _make_spec(raw_content="Build a TODO API.")
         project = _make_project(project_type="new")
 
         agent_output = {
-            "analysis_summary": "A simple TODO application.",
             "tasks": [
                 {
-                    "title": "Create task model",
-                    "description": "Add SQLAlchemy model for tasks",
-                    "acceptance_criteria": ["Model exists", "Migration runs"],
-                    "priority": "high",
-                    "complexity": "low",
+                    "title": "POST /todos",
+                    "description": "Create a new todo item",
+                    "acceptance_criteria": ["POST /todos with valid body → 201 + todo object"],
+                    "implementation_steps": [
+                        "Read app/api/ to understand router pattern",
+                        "Add POST /todos router in app/api/todos.py",
+                        "Add TodoRepository.create in app/repositories/todo_repository.py",
+                    ],
                 }
             ],
         }
 
         mock_message = MagicMock()
         mock_message.structured_output = agent_output
+        mock_message.result = None
 
         async def mock_query(*args, **kwargs):
             yield mock_message
 
         saved_task = MagicMock(
-            id="task-new-001",
+            id="task-001",
             project_id=project.id,
             spec_id=spec.id,
-            title="Create task model",
-            description="Add SQLAlchemy model for tasks",
-            priority="high",
-            complexity="low",
+            title="POST /todos",
+            description="Create a new todo item",
             status="plan_reviewing",
         )
+
+        mock_broadcast = AsyncMock()
 
         with (
             patch("app.agents.design_agent.spec_repository") as mock_spec_repo,
             patch("app.agents.design_agent.project_repository") as mock_proj_repo,
             patch("app.agents.design_agent._update_spec_status", new_callable=AsyncMock),
-            patch("app.agents.design_agent.ws_manager") as mock_ws,
+            patch("app.agents.design_agent.make_broadcaster", return_value=mock_broadcast),
             patch("app.agents.design_agent.query", new=mock_query),
             patch("app.agents.design_agent._save_tasks", new_callable=AsyncMock, return_value=[saved_task]),
             patch("app.agents.design_agent._build_prompt", return_value="test prompt"),
@@ -326,51 +247,50 @@ class TestAnalyzeSpecAndCreateTasks:
         ):
             mock_spec_repo.find_by_id = AsyncMock(return_value=spec)
             mock_proj_repo.find_by_id = AsyncMock(return_value=project)
-            mock_ws.broadcast = AsyncMock()
 
             from app.agents.design_agent import analyze_spec_and_create_tasks
 
             await analyze_spec_and_create_tasks(spec.id)
 
-            # Last broadcast should be spec_analyzed with the saved task
-            final_broadcast = mock_ws.broadcast.call_args_list[-1].args[1]
-            assert final_broadcast["type"] == "spec_analyzed"
-            assert final_broadcast["analysis_summary"] == "A simple TODO application."
-            assert len(final_broadcast["tasks"]) == 1
-            assert final_broadcast["tasks"][0]["title"] == "Create task model"
+            # 마지막 broadcast가 spec_analyzed이고 tasks를 포함해야 함
+            all_broadcast_args = [call.args[0] for call in mock_broadcast.call_args_list]
+            spec_analyzed_msg = next(m for m in all_broadcast_args if m.get("type") == "spec_analyzed")
+            assert len(spec_analyzed_msg["tasks"]) == 1
+            assert spec_analyzed_msg["tasks"][0]["title"] == "POST /todos"
 
     async def test_agent_failure_reverts_spec_status_to_uploaded(self):
         """Should revert spec status to 'uploaded' and broadcast failure when agent raises."""
         spec = _make_spec(raw_content="Build something.")
         project = _make_project()
 
-        async def mock_query_error(*args, **kwargs):
+        async def mock_query_error(**_):
+            if False:
+                yield
             raise RuntimeError("Claude API unreachable")
-            yield  # makes this an async generator
+
+        mock_broadcast = AsyncMock()
 
         with (
             patch("app.agents.design_agent.spec_repository") as mock_spec_repo,
             patch("app.agents.design_agent.project_repository") as mock_proj_repo,
             patch("app.agents.design_agent._update_spec_status", new_callable=AsyncMock) as mock_update_status,
-            patch("app.agents.design_agent.ws_manager") as mock_ws,
+            patch("app.agents.design_agent.make_broadcaster", return_value=mock_broadcast),
             patch("app.agents.design_agent.query", new=mock_query_error),
             patch("app.agents.design_agent._build_prompt", return_value="test prompt"),
             patch("app.agents.design_agent._load_spec_content", new_callable=AsyncMock, return_value="Build something."),
         ):
             mock_spec_repo.find_by_id = AsyncMock(return_value=spec)
             mock_proj_repo.find_by_id = AsyncMock(return_value=project)
-            mock_ws.broadcast = AsyncMock()
 
             from app.agents.design_agent import analyze_spec_and_create_tasks
 
             await analyze_spec_and_create_tasks(spec.id)
 
-            # Status should be reverted to "uploaded" on failure
             status_calls = [c.args[1] for c in mock_update_status.call_args_list]
             assert "uploaded" in status_calls
 
-            # Failure broadcast should be emitted
-            broadcast_types = [c.args[1]["type"] for c in mock_ws.broadcast.call_args_list]
+            all_broadcast_args = [call.args[0] for call in mock_broadcast.call_args_list]
+            broadcast_types = [m.get("type") for m in all_broadcast_args]
             assert "spec_analyze_failed" in broadcast_types
 
     async def test_agent_returns_no_result_reverts_spec_status(self):
@@ -385,18 +305,19 @@ class TestAnalyzeSpecAndCreateTasks:
         async def mock_query_empty(*args, **kwargs):
             yield mock_message
 
+        mock_broadcast = AsyncMock()
+
         with (
             patch("app.agents.design_agent.spec_repository") as mock_spec_repo,
             patch("app.agents.design_agent.project_repository") as mock_proj_repo,
             patch("app.agents.design_agent._update_spec_status", new_callable=AsyncMock) as mock_update_status,
-            patch("app.agents.design_agent.ws_manager") as mock_ws,
+            patch("app.agents.design_agent.make_broadcaster", return_value=mock_broadcast),
             patch("app.agents.design_agent.query", new=mock_query_empty),
             patch("app.agents.design_agent._build_prompt", return_value="test prompt"),
             patch("app.agents.design_agent._load_spec_content", new_callable=AsyncMock, return_value="Build something."),
         ):
             mock_spec_repo.find_by_id = AsyncMock(return_value=spec)
             mock_proj_repo.find_by_id = AsyncMock(return_value=project)
-            mock_ws.broadcast = AsyncMock()
 
             from app.agents.design_agent import analyze_spec_and_create_tasks
 

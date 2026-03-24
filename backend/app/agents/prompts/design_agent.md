@@ -25,5 +25,8 @@ $spec_content
    - 올바른 예: `GET /users/me without Authorization header → 401`
    - **잘못된 예 (절대 사용 금지)**: `UserInfoResponse 모델이 email 필드를 포함한다` (모델 구조 설명은 criteria가 아님)
    - **잘못된 예 (절대 사용 금지)**: `UserNotFoundException 발생 시 404이다` (예외 설명은 criteria가 아님 — HTTP 형식으로 변환할 것)
-4. 기존 코드베이스 구조를 분석한 후 각 Task의 `target_files`에 생성/수정할 파일 경로를 명시한다 (repo root 기준 상대경로, 예: `app/api/users.py`)
+4. 각 Task의 `implementation_steps`에 코드 에이전트가 순서대로 따를 구체적인 구현 계획을 작성한다
+   - 각 step은 하나의 구체적인 행동 (예: `app/api/users.py에 POST /users/signup 라우터 추가`)
+   - 파일 읽기 → 모델/스키마 정의 → 레포지토리 → 서비스 → 라우터 순서로 작성
+   - 코드 작성 전 반드시 관련 파일을 먼저 읽는 step을 포함할 것
 5. 결과는 JSON 형식으로만 반환한다

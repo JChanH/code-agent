@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
-from app.agents.design_agent import analyze_spec_and_create_tasks
+from app.agents.design_agent_v2 import analyze_spec_and_create_tasks
 from app.agents.orchestrator import run_task
 from app.repositories import spec_repository, task_repository, project_repository
 from app.schemas.common import ApiResponse

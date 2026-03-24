@@ -10,6 +10,7 @@ cryptography==44.0.0
 
 # Agent SDK
 claude-agent-sdk>=0.1.48
+anthropic>=0.40.0
 
 # WebSocket
 websockets==14.1

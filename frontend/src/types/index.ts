@@ -25,9 +25,6 @@ export type TaskStatus =
   | 'done'
   | 'failed';
 
-export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
-export type TaskComplexity = 'trivial' | 'low' | 'medium' | 'high' | 'very_high';
-
 export type SpecSourceType = 'document' | 'image' | 'text' | 'url';
 export type SpecStatus = 'uploaded' | 'analyzing' | 'final_confirmed';
 
@@ -76,13 +73,7 @@ export interface Task {
   title: string;
   description: string;
   acceptance_criteria: string[] | null;
-  priority: TaskPriority;
-  complexity: TaskComplexity;
   status: TaskStatus;
-  dependencies: string[] | null;
-  sort_order: number;
-  auto_approve: boolean;
-  auto_approve_config: Record<string, unknown> | null;
   git_commit_hash: string | null;
   created_at: string;
   updated_at: string;
@@ -131,10 +122,6 @@ export interface TaskCreate {
   title: string;
   description: string;
   acceptance_criteria?: string[];
-  priority?: TaskPriority;
-  complexity?: TaskComplexity;
-  dependencies?: string[];
-  auto_approve?: boolean;
 }
 
 export interface TaskUpdate {
@@ -142,9 +129,6 @@ export interface TaskUpdate {
   description?: string;
   assigned_user_id?: string;
   status?: TaskStatus;
-  priority?: TaskPriority;
-  complexity?: TaskComplexity;
-  sort_order?: number;
 }
 
 // ── Log ───────────────────────────────────────────────────────────────────────
@@ -173,8 +157,6 @@ export interface WsMsgSpecAnalyzed {
     id: string;
     title: string;
     description: string;
-    priority: TaskPriority;
-    complexity: TaskComplexity;
     status: TaskStatus;
   }>;
 }

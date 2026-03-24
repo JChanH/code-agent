@@ -5,7 +5,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from app.schemas.enums import TaskComplexity, TaskPriority, TaskStatus
+from app.schemas.enums import TaskStatus
 
 
 class TaskCreate(BaseModel):
@@ -15,10 +15,6 @@ class TaskCreate(BaseModel):
     title: str
     description: str
     acceptance_criteria: Optional[list[str]] = None
-    priority: TaskPriority = TaskPriority.medium
-    complexity: TaskComplexity = TaskComplexity.medium
-    auto_approve: bool = False
-    auto_approve_config: Optional[dict] = None
 
 
 class TaskUpdate(BaseModel):
@@ -26,12 +22,7 @@ class TaskUpdate(BaseModel):
     description: Optional[str] = None
     assigned_user_id: Optional[str] = None
     acceptance_criteria: Optional[list[str]] = None
-    priority: Optional[TaskPriority] = None
-    complexity: Optional[TaskComplexity] = None
     status: Optional[TaskStatus] = None
-    sort_order: Optional[int] = None
-    auto_approve: Optional[bool] = None
-    auto_approve_config: Optional[dict] = None
 
 
 class TaskResponse(BaseModel):
@@ -42,12 +33,7 @@ class TaskResponse(BaseModel):
     title: str
     description: str
     acceptance_criteria: Optional[list[str]]
-    priority: TaskPriority
-    complexity: TaskComplexity
     status: TaskStatus
-    sort_order: int
-    auto_approve: bool
-    auto_approve_config: Optional[dict]
     git_commit_hash: Optional[str]
     created_at: datetime
     updated_at: datetime

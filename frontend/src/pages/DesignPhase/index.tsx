@@ -14,7 +14,7 @@ import {
   getSpecs, getTasks, uploadSpec, removeSpec, analyzeSpec,
   finalConfirmSpec, updateTask, deleteTask,
 } from '../../api/project/projectApis';
-import type { Spec, Task, TaskPriority, TaskComplexity } from '../../types';
+import type { Spec, Task } from '../../types';
 
 // ── 컬럼 ID ───────────────────────────────────────────────────────────────────
 
@@ -33,8 +33,6 @@ function TaskEditModal({ task, onSave, onClose }: EditModalProps) {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
   const [criteria, setCriteria] = useState<string[]>(task.acceptance_criteria ?? []);
-  const [priority, setPriority] = useState<TaskPriority>(task.priority);
-  const [complexity, setComplexity] = useState<TaskComplexity>(task.complexity);
   const [newCriterion, setNewCriterion] = useState('');
 
   function addCriterion() {
@@ -76,36 +74,6 @@ function TaskEditModal({ task, onSave, onClose }: EditModalProps) {
           />
         </div>
 
-        <div style={{ display: 'flex', gap: 12 }}>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label style={{ fontSize: 11, color: '#9ca3af' }}>우선순위</label>
-            <select
-              style={{ background: '#22263a', border: '1px solid #3d4270', borderRadius: 4, padding: '6px 8px', color: '#e2e8f0', fontSize: 13 }}
-              value={priority}
-              onChange={(e) => setPriority(e.target.value as TaskPriority)}
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="critical">Critical</option>
-            </select>
-          </div>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label style={{ fontSize: 11, color: '#9ca3af' }}>복잡도</label>
-            <select
-              style={{ background: '#22263a', border: '1px solid #3d4270', borderRadius: 4, padding: '6px 8px', color: '#e2e8f0', fontSize: 13 }}
-              value={complexity}
-              onChange={(e) => setComplexity(e.target.value as TaskComplexity)}
-            >
-              <option value="trivial">Trivial</option>
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="very_high">Very High</option>
-            </select>
-          </div>
-        </div>
-
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <label style={{ fontSize: 11, color: '#9ca3af' }}>수용 기준</label>
           {criteria.map((c, i) => (
@@ -131,7 +99,7 @@ function TaskEditModal({ task, onSave, onClose }: EditModalProps) {
           <button
             className="btn-sm"
             style={{ background: '#1d4ed8', color: '#fff' }}
-            onClick={() => onSave({ title, description, acceptance_criteria: criteria, priority, complexity })}
+            onClick={() => onSave({ title, description, acceptance_criteria: criteria })}
             disabled={!title.trim()}
           >
             저장

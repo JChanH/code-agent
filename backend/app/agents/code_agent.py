@@ -25,6 +25,11 @@ def _build_prompt(task: Task, project: Project, review_context: dict | None = No
         criteria_list = "\n".join(f"  - {c}" for c in task.acceptance_criteria)
         criteria_text = f"\n## Acceptance Criteria\n{criteria_list}\n"
 
+    plan_section = ""
+    if task.implementation_steps:
+        steps_list = "\n".join(f"  {i + 1}. {s}" for i, s in enumerate(task.implementation_steps))
+        plan_section = f"\n## Implementation Plan\n{steps_list}\n"
+
     retry_section = ""
     if review_context:
         attempt = review_context.get("attempt", 1)
@@ -46,16 +51,6 @@ def _build_prompt(task: Task, project: Project, review_context: dict | None = No
             guidemap_content = _get_guidemap_path(project.name, "code").read_text(encoding="utf-8")
             guideline_section = f"\n## Project Guide\n{guidemap_content}\n"
 
-    target_files_section = ""
-    if task.target_files:
-        files_list = "\n".join(f"  - {f}" for f in task.target_files)
-        target_files_section = (
-            f"\n## Target Files\n"
-            f"Create or modify these files (relative to `{project.local_repo_path}`):\n"
-            f"{files_list}\n"
-            f"Read these files first (and their neighbors for patterns), then implement.\n"
-        )
-
     return load_prompt(
         "code_agent.md",
         task_title=task.title,
@@ -67,7 +62,7 @@ def _build_prompt(task: Task, project: Project, review_context: dict | None = No
         local_repo_path=project.local_repo_path,
         retry_section=retry_section,
         guideline_section=guideline_section,
-        target_files_section=target_files_section,
+        plan_section=plan_section,
     )
 
 

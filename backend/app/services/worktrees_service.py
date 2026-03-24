@@ -41,4 +41,4 @@ async def delete_worktree(worktree_id: str) -> None:
         worktree = await worktree_repository.find_by_id(worktree_id, session)
         if not worktree:
             raise NotFoundException("Worktree not found")
-        worktree_repository.delete(worktree, session)
+        await worktree_repository.delete(worktree, session)

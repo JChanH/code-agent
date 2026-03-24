@@ -1,7 +1,7 @@
-﻿import { useSortable } from "@dnd-kit/sortable";
+import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { CheckCircle2, Clock, Play, Loader, XCircle } from "lucide-react";
-import type { Task, TaskPriority, TaskStatus } from "../../types";
+import type { Task, TaskStatus } from "../../types";
 
 const STATUS_ICON: Record<TaskStatus, React.ReactNode> = {
   plan_reviewing: <Clock size={13} style={{ color: "#f59e0b" }} />,
@@ -10,13 +10,6 @@ const STATUS_ICON: Record<TaskStatus, React.ReactNode> = {
   reviewing:      <Clock size={13} style={{ color: "#8b5cf6" }} />,
   done:           <CheckCircle2 size={13} style={{ color: "#10b981" }} />,
   failed:         <XCircle size={13} style={{ color: "#ef4444" }} />,
-};
-
-const PRIORITY_COLOR: Record<TaskPriority, string> = {
-  low: "#6b7280",
-  medium: "#3b82f6",
-  high: "#f59e0b",
-  critical: "#ef4444",
 };
 
 const MOCK_PROGRESS: Partial<Record<TaskStatus, number>> = {};
@@ -50,20 +43,15 @@ export default function KanbanCard({ task, assigneeName, onClick, onRun }: Props
       {...attributes}
       {...listeners}
     >
-      {/* 상단: 상태 아이콘 + 우선순위 점 */}
+      {/* 상단: 상태 아이콘 */}
       <div className="kanban-card-header">
         {STATUS_ICON[task.status]}
-        <span
-          className="priority-dot"
-          style={{ background: PRIORITY_COLOR[task.priority] }}
-          title={task.priority}
-        />
       </div>
 
       {/* 제목 */}
       <p className="kanban-card-title">{task.title}</p>
 
-      {/* 진행률 바 (planning/coding/reviewing) */}
+      {/* 진행률 바 */}
       {progress !== undefined && (
         <div className="progress-bar-wrap">
           <div className="progress-bar-fill" style={{ width: `${progress}%` }} />

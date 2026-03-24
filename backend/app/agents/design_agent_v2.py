@@ -1,10 +1,15 @@
-"""설계 에이전트 — Spec을 분석하여 Task 목록으로 분해."""
+"""설계 에이전트 v2 — 2단계 방식.
+
+1단계: claude-agent-sdk로 자유 분석 (output_format 없음)
+2단계: anthropic API + tool_choice로 JSON 포맷팅
+"""
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any
+
+import anthropic
 
 from claude_agent_sdk import query, ClaudeAgentOptions
 
@@ -19,16 +24,13 @@ from app.websocket.messages import (
     msg_spec_analyzing,
 )
 from app.utils.db_handler_sqlalchemy import db_conn
-from app.agents.prompts import load_prompt, load_text
+from app.agents.prompts import load_prompt
 from app.agents.guidemap_agent import guidemap_exists, get_design_context
-
-# NOTE 작업중
-# 임시 가이드라인 파일 경로 (agents/guidemap/PYTHON_FASTAPI_BACKEND_GUIDELINE.md)
-# _GUIDELINE_PATH = Path(__file__).parent / "guidemap" / "PYTHON_FASTAPI_BACKEND_GUIDELINE.md"
+from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-# Structured Output — 설계 에이전트가 반환해야 하는 JSON 스키마
+# Structured Output 스키마 — 포맷팅 단계에서 tool로 사용
 TASK_LIST_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
@@ -46,7 +48,7 @@ TASK_LIST_SCHEMA: dict[str, Any] = {
                     "implementation_steps": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Step-by-step implementation plan for the code agent. Each step is a concrete action (e.g. 'Add POST /users/signup router in app/api/users.py').",
+                        "description": "Step-by-step implementation plan for the code agent.",
                     },
                 },
                 "required": [
@@ -61,36 +63,21 @@ TASK_LIST_SCHEMA: dict[str, Any] = {
     "required": ["tasks"],
 }
 
+# 포맷팅 단계에서 강제할 tool 정의
+_FORMAT_TOOL: dict[str, Any] = {
+    "name": "create_tasks",
+    "description": "분석 결과를 Task 목록으로 구조화합니다.",
+    "input_schema": TASK_LIST_SCHEMA,
+}
+
 
 def _get_stack_context(project: Project) -> str:
-
-    # 파이썬 + fastapi의 경우    
-    if project.project_stack == "python" and project.framework == "fastapi":
-        # 신규 프로젝트의 경우 fastapi_new_project.md의 규율을 따른다()
-        if project.project_type == "new":
-            summary = load_text("fastapi_new_project.md")
-            return (
-                f"- This is a new FastAPI project. Review the key rules summary below,"
-                f"{summary}"
-            )
-            
-        # 기존 프로젝트의 경우, 별도로 생성된 guideline을 참고합니다
-        if guidemap_exists(project.name):
-            design_context = get_design_context(project.name)
-            return (
-                f"- This is an existing FastAPI project.\n"
-                f"- Follow the project guide below:\n\n"
-                f"{design_context}\n"
-            )
+    if guidemap_exists(project.name):
+        design_context = get_design_context(project.name)
         return (
-            "- This is an existing FastAPI project\n"
-            "- Maintain the existing layer structure (router → service → repository)\n"
-            "- Follow the existing response format and exception handling patterns\n"
-        )
-    if project.project_stack == "java":
-        return (
-            "- This project uses an existing internal framework\n"
-            "- Follow the existing package structure and naming conventions\n"
+            f"- This is an existing project.\n"
+            f"- Follow the project guide below:\n\n"
+            f"{design_context}\n"
         )
     return ""
 
@@ -123,8 +110,7 @@ def _build_prompt(spec_content: str, project: Project) -> str:
 
 
 def _extract_docx_text(path: str) -> str:
-    """Extracts plain text from a .docx file using python-docx."""
-    import docx  # python-docx
+    import docx
 
     doc = docx.Document(path)
     parts: list[str] = []
@@ -140,7 +126,6 @@ def _extract_docx_text(path: str) -> str:
 
 
 async def _load_spec_content(spec: Spec) -> str:
-    """Extracts text content from a Spec for analysis."""
     if spec.raw_content:
         return spec.raw_content
 
@@ -149,7 +134,6 @@ async def _load_spec_content(spec: Spec) -> str:
         try:
             if path_lower.endswith(".docx") or path_lower.endswith(".doc"):
                 return _extract_docx_text(spec.source_path)
-            # Plain text files
             with open(spec.source_path, encoding="utf-8", errors="ignore") as f:
                 return f.read()
         except OSError as e:
@@ -160,7 +144,6 @@ async def _load_spec_content(spec: Spec) -> str:
 
 
 async def _update_spec_status(spec_id: str, status: str, analysis_result: str | None = None) -> None:
-    """Updates the spec status and analysis result."""
     async with db_conn.transaction() as session:
         spec = await spec_repository.find_by_id(spec_id, session)
         if spec:
@@ -171,7 +154,6 @@ async def _update_spec_status(spec_id: str, status: str, analysis_result: str | 
 
 
 async def _save_tasks(project_id: str, spec_id: str, task_items: list[dict]) -> list[Task]:
-    """Saves the decomposed Task list to the database."""
     tasks = [
         Task(
             project_id=project_id,
@@ -193,16 +175,42 @@ async def _save_tasks(project_id: str, spec_id: str, task_items: list[dict]) -> 
     return tasks
 
 
+def _format_with_anthropic(free_text: str) -> dict:
+    """에이전트 자유 분석 결과를 Anthropic API + tool_choice로 JSON 포맷팅."""
+    settings = get_settings()
+    client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+
+    response = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=4096,
+        tools=[_FORMAT_TOOL],
+        tool_choice={"type": "tool", "name": "create_tasks"},
+        messages=[
+            {
+                "role": "user",
+                "content": (
+                    "아래 분석 결과를 create_tasks tool을 사용해 Task 목록으로 구조화하세요.\n\n"
+                    f"<analysis>\n{free_text}\n</analysis>"
+                ),
+            }
+        ],
+    )
+
+    for block in response.content:
+        if block.type == "tool_use" and block.name == "create_tasks":
+            return block.input
+
+    raise ValueError("Formatting step returned no tool_use block.")
+
+
 async def analyze_spec_and_create_tasks(spec_id: str) -> None:
     """
-    요청사항을 정리하고 태스트 목록을 뽑아낸다
+    Spec을 분석하고 Task 목록을 자동 생성합니다.
 
-    1. 스펙 로딩 -> 상태를 'analyzing'으로 변경
-    2. design agent 실행
-    3. 분석 데이터 db 저장 + 상태값 'analyzed'로 수정
-    4. 각 단계를 웹소켓으로 전송
+    1단계: claude-agent-sdk로 자유 분석 (output_format 없음)
+    2단계: anthropic API + tool_choice로 JSON 포맷팅
     """
-    # 1. Load Spec / Project
+    # spec + project 조회
     spec = await spec_repository.find_by_id(spec_id)
     if not spec:
         logger.error("Spec not found: %s", spec_id)
@@ -216,7 +224,7 @@ async def analyze_spec_and_create_tasks(spec_id: str) -> None:
     project_id = project.id
     broadcast = make_broadcaster(project_id)
 
-    # 2. Set status → analyzing
+    # 스펙서 업데이트
     await _update_spec_status(spec_id, "analyzing")
     await broadcast(msg_spec_analyzing(spec_id))
 
@@ -224,42 +232,34 @@ async def analyze_spec_and_create_tasks(spec_id: str) -> None:
         spec_content = await _load_spec_content(spec)
         prompt = _build_prompt(spec_content, project)
 
+        # 1단계: output_format 없이 자유 분석
         options = ClaudeAgentOptions(
             model="claude-sonnet-4-6",
             allowed_tools=["Read", "Glob", "Grep"],
             permission_mode="bypassPermissions",
             max_turns=30,
-            output_format={"type": "json_schema", "schema": TASK_LIST_SCHEMA},
         )
 
-        parsed: dict | None = None
+        free_text_parts: list[str] = []
 
         async for message in query(prompt=prompt, options=options):
             await broadcast(msg_agent_message(extract_agent_msg_data(message), spec_id=spec_id))
 
-            # Extract structured_output from ResultMessage (when output_format=json_schema)
-            if hasattr(message, "structured_output") and message.structured_output is not None:
-                parsed = message.structured_output
+            if hasattr(message, "result") and message.result:
+                free_text_parts.append(message.result)
 
-            # Fallback: parse JSON from AssistantMessage result text
-            elif hasattr(message, "result") and message.result:
-                try:
-                    parsed = json.loads(message.result)
-                except (json.JSONDecodeError, TypeError):
-                    pass
+        free_text = "\n".join(free_text_parts)
+        if not free_text.strip():
+            raise ValueError("Agent returned no analysis result.")
 
-        # 3. Parse result
-        if not parsed:
-            raise ValueError("Agent returned no result.")
-        task_items: list[dict] = (parsed or {}).get("tasks", [])
+        # 2단계: Anthropic API로 JSON 포맷팅
+        parsed = _format_with_anthropic(free_text)
+        task_items: list[dict] = parsed.get("tasks", [])
 
-        # 4. Save Tasks to DB
         saved_tasks = await _save_tasks(project_id, spec_id, task_items)
 
-        # 5. Set Spec status → analyzed
         await _update_spec_status(spec_id, "analyzed")
 
-        # 6. Broadcast completion
         await broadcast(
             msg_spec_analyzed(
                 spec_id=spec_id,
@@ -279,6 +279,6 @@ async def analyze_spec_and_create_tasks(spec_id: str) -> None:
         )
 
     except Exception as exc:
-        logger.exception("Design Agent failed (spec_id=%s): %s", spec_id, exc)
-        await _update_spec_status(spec_id, "uploaded")  # Revert status on failure
+        logger.exception("Design Agent v2 failed (spec_id=%s): %s", spec_id, exc)
+        await _update_spec_status(spec_id, "uploaded")
         await broadcast(msg_spec_analyze_failed(spec_id, str(exc)))

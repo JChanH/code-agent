@@ -33,5 +33,6 @@ async def add(project: Project, session: AsyncSession | None = None) -> Project:
         return project
 
 
-def delete(project: Project, session: AsyncSession) -> None:
-    session.delete(project)
+async def delete(project: Project, session: AsyncSession | None = None) -> None:
+    async with db_conn.transaction(session) as s:
+        await s.delete(project)

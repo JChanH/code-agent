@@ -44,7 +44,7 @@ async def delete_task(task_id: str) -> None:
         task = await task_repository.find_by_id(task_id, session)
         if not task:
             raise NotFoundException("Task not found")
-        task_repository.delete(task, session)
+        await task_repository.delete(task, session)
 
 
 # 작업에서 변경된 부분 조회

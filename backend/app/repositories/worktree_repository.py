@@ -58,5 +58,6 @@ async def add(worktree: UserWorktree, session: AsyncSession | None = None) -> Us
         return worktree
 
 
-def delete(worktree: UserWorktree, session: AsyncSession) -> None:
-    session.delete(worktree)
+async def delete(worktree: UserWorktree, session: AsyncSession | None = None) -> None:
+    async with db_conn.transaction(session) as s:
+        await s.delete(worktree)

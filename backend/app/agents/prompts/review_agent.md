@@ -7,12 +7,11 @@ Your job is to verify the implementation satisfies every acceptance criterion us
 $criteria_text
 ## Project Path
 $local_repo_path
-$target_files_section
+
 ## Steps
 
 1. **Read the implementation**
-   - Read each file listed under "Implementation Files"
-   - If no files are listed, use Glob to find relevant files under `$local_repo_path`
+   - Use Glob to find relevant files under `$local_repo_path`
 
 2. **Write pytest tests**
    - Write a test file at: `$test_file_path`

@@ -1,21 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { CheckCircle2, Circle, Trash2 } from 'lucide-react';
-import type { Task, TaskPriority } from '../../types';
-
-const PRIORITY_COLOR: Record<TaskPriority, string> = {
-  low: '#6b7280',
-  medium: '#3b82f6',
-  high: '#f59e0b',
-  critical: '#ef4444',
-};
-
-const PRIORITY_LABEL: Record<TaskPriority, string> = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-  critical: 'Critical',
-};
+import type { Task } from '../../types';
 
 interface Props {
   task: Task;
@@ -45,20 +31,12 @@ export default function DesignTaskCard({ task, onEdit, onDelete }: Props) {
       {...listeners}
       onClick={() => onEdit(task)}
     >
-      {/* 상단: 상태 아이콘 + 우선순위 */}
+      {/* 상단: 상태 아이콘 */}
       <div className="kanban-card-header">
         {isConfirmed
           ? <CheckCircle2 size={13} style={{ color: '#22c55e' }} />
           : <Circle size={13} style={{ color: '#6b7280' }} />
         }
-        <span
-          className="priority-dot"
-          style={{ background: PRIORITY_COLOR[task.priority] }}
-          title={PRIORITY_LABEL[task.priority]}
-        />
-        <span style={{ fontSize: 10, color: PRIORITY_COLOR[task.priority], marginLeft: 2 }}>
-          {PRIORITY_LABEL[task.priority]}
-        </span>
       </div>
 
       {/* 제목 */}
@@ -71,7 +49,6 @@ export default function DesignTaskCard({ task, onEdit, onDelete }: Props) {
         )}
 
         <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
-          {/* 삭제 */}
           <button
             className="btn-icon"
             title="삭제"

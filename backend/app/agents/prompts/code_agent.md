@@ -9,11 +9,11 @@ $criteria_text
 - Name: $project_name
 - Stack: $project_stack / $framework
 - Local path: $local_repo_path
-$guideline_section$target_files_section$retry_section
+$guideline_section$plan_section$retry_section
 ## Steps
-1. Read the target files and their neighboring files to understand existing patterns
-   - If no target files are specified above, use Glob to explore `$local_repo_path` first
-2. Implement the code following existing patterns and naming conventions
+1. Use Glob to explore `$local_repo_path` and read the relevant files to understand existing patterns
+2. Follow the Implementation Plan steps in order if provided
+3. Implement the code following existing patterns and naming conventions
 
 ## Rules
 - Follow existing code style and patterns

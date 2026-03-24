@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Optional
 
-from sqlalchemy import Boolean, Enum, ForeignKey, Integer, JSON, String, Text, TIMESTAMP
+from sqlalchemy import Enum, ForeignKey, JSON, String, Text, TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -44,22 +44,12 @@ class Task(Base):
     # 설명
     description: Mapped[str] = mapped_column(Text, nullable=False)
     
+    # 인수 조건(테스트 확인용)
     acceptance_criteria: Mapped[Optional[Any]] = mapped_column(JSON)
 
-    target_files: Mapped[Optional[Any]] = mapped_column(JSON)
+    # 적용 순서
+    implementation_steps: Mapped[Optional[Any]] = mapped_column(JSON)
 
-    # 중요도
-    priority: Mapped[str] = mapped_column(
-        Enum("low", "medium", "high", "critical", name="task_priority_enum"),
-        default="medium",
-    )
-    
-    # 복잡도
-    complexity: Mapped[str] = mapped_column(
-        Enum("trivial", "low", "medium", "high", "very_high", name="task_complexity_enum"),
-        default="medium",
-    )
-    
     # task 상태
     status: Mapped[str] = mapped_column(
         Enum(
@@ -68,12 +58,6 @@ class Task(Base):
         ),
         default="plan_reviewing",
     )
-    
-    sort_order: Mapped[int] = mapped_column(Integer, default=0)
-    
-    auto_approve: Mapped[bool] = mapped_column(Boolean, default=False)
-    
-    auto_approve_config: Mapped[Optional[Any]] = mapped_column(JSON)
     
     git_commit_hash: Mapped[Optional[str]] = mapped_column(String(40))
 

@@ -63,15 +63,6 @@ def _build_prompt(task: Task, project: Project) -> str:
         criteria_list = "\n".join(f"  - {c}" for c in task.acceptance_criteria)
         criteria_text = f"\n## Acceptance Criteria\n{criteria_list}\n"
 
-    target_files_section = ""
-    if task.target_files:
-        files_list = "\n".join(f"  - {f}" for f in task.target_files)
-        target_files_section = (
-            f"\n## Implementation Files\n"
-            f"The following files were created or modified (relative to `{project.local_repo_path}`):\n"
-            f"{files_list}\n"
-        )
-
     test_file_path = _make_test_file_path(task, project.local_repo_path)
 
     return load_prompt(
@@ -80,7 +71,6 @@ def _build_prompt(task: Task, project: Project) -> str:
         task_description=task.description,
         criteria_text=criteria_text,
         local_repo_path=project.local_repo_path,
-        target_files_section=target_files_section,
         test_file_path=test_file_path,
     )
 
@@ -93,7 +83,7 @@ async def run_review_agent(
     """
     Task 구현을 pytest로 검증합니다.
 
-    :param task: 검증할 Task (acceptance_criteria, target_files 포함)
+    :param task: 검증할 Task (acceptance_criteria 포함)
     :param project: 프로젝트 정보 (local_repo_path 포함)
     :param broadcast: WebSocket 브로드캐스트 콜백
     """
