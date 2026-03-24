@@ -21,6 +21,7 @@ from app.agents.prompts import load_prompt
 
 logger = logging.getLogger(__name__)
 
+# 임시 경로
 _GUIDEMAP_DIR = Path(__file__).parent / "guidemaps"
 
 

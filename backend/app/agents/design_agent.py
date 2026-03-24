@@ -1,4 +1,4 @@
-"""설계 에이전트 — Spec을 분석하여 Task 목록으로 분해합니다."""
+"""설계 에이전트 — Spec을 분석하여 Task 목록으로 분해."""
 
 from __future__ import annotations
 
@@ -71,41 +71,6 @@ TASK_LIST_SCHEMA: dict[str, Any] = {
                     "complexity",
                 ],
             },
-        },
-        "db_schema": {
-            "type": "object",
-            "description": "DB schema design for new projects only. Omit for existing projects.",
-            "properties": {
-                "overview": {
-                    "type": "string",
-                    "description": "Overall description of the DB schema",
-                },
-                "tables": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "name": {"type": "string"},
-                            "description": {"type": "string"},
-                            "columns": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "name": {"type": "string"},
-                                        "type": {"type": "string"},
-                                        "nullable": {"type": "boolean"},
-                                        "description": {"type": "string"},
-                                    },
-                                    "required": ["name", "type", "nullable"],
-                                },
-                            },
-                        },
-                        "required": ["name", "columns"],
-                    },
-                },
-            },
-            "required": ["overview", "tables"],
         },
     },
     "required": ["analysis_summary", "tasks"],
