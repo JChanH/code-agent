@@ -33,5 +33,6 @@ async def add(user: User, session: AsyncSession | None = None) -> User:
         return user
 
 
-def delete(user: User, session: AsyncSession) -> None:
-    session.delete(user)
+async def delete(user: User, session: AsyncSession | None = None) -> None:
+    async with db_conn.transaction(session) as s:
+        await s.delete(user)
