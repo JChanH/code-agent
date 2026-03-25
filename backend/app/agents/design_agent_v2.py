@@ -25,7 +25,7 @@ from app.websocket.messages import (
 )
 from app.utils.db_handler_sqlalchemy import db_conn
 from app.agents.prompts import load_prompt
-from app.agents.guidemap_agent import guidemap_exists, get_design_context
+from app.agents.guidemap_agent import guidemap_exists, get_guidemap_context
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -73,7 +73,7 @@ _FORMAT_TOOL: dict[str, Any] = {
 
 def _get_stack_context(project: Project, use_guidemap: bool = True) -> str:
     if use_guidemap and guidemap_exists(project.name):
-        design_context = get_design_context(project.name)
+        design_context = get_guidemap_context(project.name)
         return (
             f"- This is an existing project.\n"
             f"- Follow the project guide below:\n\n"

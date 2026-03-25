@@ -1,9 +1,8 @@
-"""Guidemap Agent — analyzes an existing codebase and writes EXISTING_PROJECT_GUIDE.md."""
+"""Guidemap Agent — 현재의 코드베이스를 기준으로 agent에서 참고하는 guidemap을 생성"""
 
 from __future__ import annotations
 
 import logging
-import re
 from pathlib import Path
 
 from claude_agent_sdk import query, ClaudeAgentOptions
@@ -25,47 +24,33 @@ logger = logging.getLogger(__name__)
 _GUIDEMAP_DIR = Path(__file__).parent / "guidemaps"
 
 
-def _get_guidemap_path(project_name: str, kind: str) -> Path:
-    # design과 code에 따라서 분기 처리
-    return _GUIDEMAP_DIR / f"{project_name}_{kind}.md"
+def _get_guidemap_path(project_name: str) -> Path:
+    return _GUIDEMAP_DIR / f"{project_name}_guidemap.md"
 
 
 def guidemap_exists(project_name: str) -> bool:
-    # design이 있다면 code도 있다고 확정
-    return _get_guidemap_path(project_name, "design").exists()
+    return _get_guidemap_path(project_name).exists()
 
 
-def get_design_context(project_name: str) -> str | None:
-    # design 파일 반환
-    path = _get_guidemap_path(project_name, "design")
+def get_guidemap_context(project_name: str) -> str | None:
+    path = _get_guidemap_path(project_name)
     if not path.exists():
         return None
     return path.read_text(encoding="utf-8")
 
 
-def _parse_and_save(project_name: str, result_text: str) -> None:
-    # agent 반환 문자 구분 및 저장
-    design = re.search(r"<design>(.*?)</design>", result_text, re.DOTALL)
-    code = re.search(r"<code>(.*?)</code>", result_text, re.DOTALL)
-    
-    if not design or not code:
-        raise ValueError("Guidemap 생성 실패입니다.")
-        
-    for kind, content in [("design", design.group(1)), ("code", code.group(1))]:
-        path = _get_guidemap_path(project_name, kind)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content.strip(), encoding="utf-8")
-        
-        logger.info("Guidemap 경로 %s", path)
+def _save_guidemap(project_name: str, result_text: str) -> None:
+    path = _get_guidemap_path(project_name)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(result_text.strip(), encoding="utf-8")
+    logger.info("Guidemap 경로 %s", path)
         
 
 def _build_prompt(project: Project) -> str:
     # 프롬프트 조합
     return load_prompt(
         "guidemap_agent.md",
-        local_repo_path=project.local_repo_path,
-        project_stack=project.project_stack,
-        framework=project.framework or "unspecified",
+        project_root=project.local_repo_path,
     )
 
 
@@ -108,7 +93,7 @@ async def generate_guidemap(project: Project) -> None:
             raise ValueError("Guidemap agent returned no content.")
 
         # 내용 저장
-        _parse_and_save(
+        _save_guidemap(
             project_name=project.name,
             result_text=result_text
         )

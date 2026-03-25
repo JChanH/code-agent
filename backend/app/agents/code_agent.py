@@ -9,7 +9,7 @@ from claude_agent_sdk import query, ClaudeAgentOptions
 
 from app.models import Task, Project
 from app.agents.prompts import load_prompt
-from app.agents.guidemap_agent import guidemap_exists, _get_guidemap_path
+from app.agents.guidemap_agent import guidemap_exists, get_guidemap_context
 from app.websocket.messages import BroadcastFn, extract_agent_msg_data, msg_agent_message
 
 logger = logging.getLogger(__name__)
@@ -47,8 +47,7 @@ def _build_prompt(task: Task, project: Project, review_context: dict | None = No
                 f"Read `{_GUIDELINE_PATH}` using the Read tool and follow its rules.\n"
             )
         elif guidemap_exists(project.name):
-            # 코드 관련된 guidemap만 가져오기
-            guidemap_content = _get_guidemap_path(project.name, "code").read_text(encoding="utf-8")
+            guidemap_content = get_guidemap_context(project.name)
             guideline_section = f"\n## Project Guide\n{guidemap_content}\n"
 
     return load_prompt(
