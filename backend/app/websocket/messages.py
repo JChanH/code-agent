@@ -27,11 +27,6 @@ class WsMsgType:
     GUIDEMAP_GENERATED = "guidemap_generated"
     GUIDEMAP_FAILED = "guidemap_failed"
 
-    # 코드 분석 타입
-    LEGACY_ANALYZING = "legacy_analyzing"
-    LEGACY_ANALYZED = "legacy_analyzed"
-    LEGACY_ANALYZE_FAILED = "legacy_analyze_failed"
-
     # 런타임 에러 타입
     RUNTIME_ERROR = "runtime_error"
     RUNTIME_ERROR_UPDATE = "runtime_error_update"
@@ -165,21 +160,6 @@ def msg_guidemap_generated(project_id: str) -> dict:
 # guidemap 생성 실패 메시지
 def msg_guidemap_failed(project_id: str, error: str) -> dict:
     return {"type": WsMsgType.GUIDEMAP_FAILED, "project_id": project_id, "error": error}
-
-
-# 코드 분석중 메시지
-def msg_legacy_analyzing(session_id: str) -> dict:
-    return {"type": WsMsgType.LEGACY_ANALYZING, "session_id": session_id}
-
-
-# 코드 분석 완료 메시지
-def msg_legacy_analyzed(session_id: str, sections: list[dict]) -> dict:
-    return {"type": WsMsgType.LEGACY_ANALYZED, "session_id": session_id, "sections": sections}
-
-
-# 코드 분석 실패 메시지
-def msg_legacy_analyze_failed(session_id: str, error: str) -> dict:
-    return {"type": WsMsgType.LEGACY_ANALYZE_FAILED, "session_id": session_id, "error": error}
 
 
 # 런타임 에러 메시지()

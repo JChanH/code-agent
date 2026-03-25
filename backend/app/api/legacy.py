@@ -2,10 +2,10 @@
 
 from pathlib import Path as FsPath
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from app.agents.legacy_analysis_agent import analyze_legacy_code, chat_with_legacy_code
+from app.agents.legacy_analysis_agent import chat_with_legacy_code
 from app.schemas.common import ApiResponse
 
 _EXCLUDED_DIRS = frozenset({
@@ -49,33 +49,10 @@ def _build_file_tree(path: FsPath, depth: int = 0) -> dict:
 legacy_router = APIRouter(prefix="/legacy", tags=["legacy"])
 
 
-class AnalyzeRequest(BaseModel):
-    session_id: str
-    code_path: str
-
-
 class ChatRequest(BaseModel):
     code_path: str
     question: str
     focused_file: str | None = None
-
-
-@legacy_router.post("/analyze", response_model=ApiResponse[dict])
-async def start_analysis(body: AnalyzeRequest, background_tasks: BackgroundTasks):
-    """
-    레거시 코드 경로를 받아 API 목록 분석을 시작합니다.
-    즉시 queued 상태를 반환하고, 진행 상황은 WebSocket(/ws/{session_id})으로 전송됩니다.
-    """
-    if not body.code_path.strip():
-        raise HTTPException(status_code=400, detail="code_path는 필수입니다.")
-
-    background_tasks.add_task(analyze_legacy_code, body.session_id, body.code_path)
-
-    return ApiResponse.ok({
-        "session_id": body.session_id,
-        "status": "queued",
-        "message": "분석이 시작되었습니다. WebSocket으로 진행상황을 확인하세요.",
-    })
 
 
 @legacy_router.get("/files", response_model=ApiResponse[dict])
