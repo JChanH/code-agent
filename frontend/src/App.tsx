@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, lazy, Suspense } from 'react';
-import { Bell, Settings, Code2, Trash2 } from 'lucide-react';
+import { Bell, Settings, Code2, Trash2, Loader2, CheckCircle2 } from 'lucide-react';
 import ComingSoon from './components/common/ComingSoon';
 import Sidebar from './components/common/Sidebar';
-import { useAppStore, CURRENT_USER_ID } from './stores';
+import { useAppStore, useTaskStore, CURRENT_USER_ID } from './stores';
 import { useWebSocket } from './hooks/useWebSocket';
 import { getProjects } from './api/project/projectApis';
 import './App.css';
@@ -15,10 +15,95 @@ const SettingsPage = lazy(() => import('./pages/Settings'));
 const LegacyAnalysis = lazy(() => import('./pages/LegacyAnalysis'));
 const RuntimeErrors = lazy(() => import('./pages/RuntimeErrors'));
 
+// ── Agent Notification Popup ──────────────────────────────────────────────────
+
+function AgentNotificationPopup({ onClose }: { onClose: () => void }) {
+  const projects = useAppStore((s) => s.projects);
+  const guidemapGeneratingProjectIds = useAppStore((s) => s.guidemapGeneratingProjectIds);
+  const tasks = useTaskStore((s) => s.tasks);
+  const analyzingSpecIds = useTaskStore((s) => s.analyzingSpecIds);
+
+  const activeAgents: { key: string; label: string; sub: string }[] = [];
+
+  // 가이드맵 생성 중
+  guidemapGeneratingProjectIds.forEach((pid) => {
+    const project = projects.find((p) => p.id === pid);
+    activeAgents.push({
+      key: `guidemap-${pid}`,
+      label: '가이드맵 생성 중',
+      sub: project?.name ?? `프로젝트 #${pid}`,
+    });
+  });
+
+  // Spec 분석 중
+  analyzingSpecIds.forEach((specId) => {
+    activeAgents.push({
+      key: `spec-${specId}`,
+      label: 'Spec 분석 중',
+      sub: `Spec #${specId}`,
+    });
+  });
+
+  // 코딩 중인 Task (code agent)
+  tasks
+    .filter((t) => t.status === 'coding' || t.status === 'reviewing')
+    .forEach((t) => {
+      activeAgents.push({
+        key: `task-${t.id}`,
+        label: t.status === 'coding' ? '코딩 중' : '리뷰 중',
+        sub: t.title.length > 36 ? t.title.slice(0, 36) + '…' : t.title,
+      });
+    });
+
+  return (
+    <>
+      <div className="notif-backdrop" onClick={onClose} />
+      <div className="notif-popup">
+        <div className="notif-header">
+          <span>진행 중인 Agent</span>
+          {activeAgents.length > 0 && (
+            <span className="notif-count-badge">{activeAgents.length}</span>
+          )}
+        </div>
+        <div className="notif-body">
+          {activeAgents.length === 0 ? (
+            <div className="notif-empty">
+              <CheckCircle2 size={20} style={{ color: 'var(--success)', opacity: 0.7 }} />
+              <span>실행 중인 Agent가 없습니다</span>
+            </div>
+          ) : (
+            <ul className="notif-list">
+              {activeAgents.map((a) => (
+                <li key={a.key} className="notif-item">
+                  <Loader2 size={13} className="animate-spin notif-item-icon" />
+                  <div className="notif-item-text">
+                    <span className="notif-item-label">{a.label}</span>
+                    <span className="notif-item-sub">{a.sub}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── Header ────────────────────────────────────────────────────────────────────
 
 function AppHeader() {
   const initial = (CURRENT_USER_ID[0] ?? 'U').toUpperCase();
+  const [notifOpen, setNotifOpen] = useState(false);
+
+  const guidemapGeneratingProjectIds = useAppStore((s) => s.guidemapGeneratingProjectIds);
+  const tasks = useTaskStore((s) => s.tasks);
+  const analyzingSpecIds = useTaskStore((s) => s.analyzingSpecIds);
+
+  const activeCount =
+    guidemapGeneratingProjectIds.size +
+    analyzingSpecIds.size +
+    tasks.filter((t) => t.status === 'coding' || t.status === 'reviewing').length;
 
   return (
     <header className="app-header">
@@ -31,9 +116,19 @@ function AppHeader() {
         <span>사용자: {CURRENT_USER_ID}</span>
         <div className="header-avatar">{initial}</div>
       </div>
-      <button className="header-icon-btn" title="알림">
-        <Bell size={16} />
-      </button>
+      <div style={{ position: 'relative' }}>
+        <button
+          className={`header-icon-btn${notifOpen ? ' active' : ''}`}
+          title="알림"
+          onClick={() => setNotifOpen((v) => !v)}
+        >
+          <Bell size={16} />
+          {activeCount > 0 && (
+            <span className="notif-badge">{activeCount}</span>
+          )}
+        </button>
+        {notifOpen && <AgentNotificationPopup onClose={() => setNotifOpen(false)} />}
+      </div>
       <button className="header-icon-btn" title="설정">
         <Settings size={16} />
       </button>
