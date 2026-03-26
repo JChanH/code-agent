@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, lazy, Suspense } from 'react';
-import { Bell, Settings, Code2, Trash2, Loader2, CheckCircle2 } from 'lucide-react';
+import { Bell, Settings, Code2, Trash2, Loader2, CheckCircle2, Sun, Moon } from 'lucide-react';
 import ComingSoon from './components/common/ComingSoon';
 import Sidebar from './components/common/Sidebar';
 import { useAppStore, useTaskStore, CURRENT_USER_ID } from './stores';
@@ -99,6 +99,8 @@ function AppHeader() {
   const guidemapGeneratingProjectIds = useAppStore((s) => s.guidemapGeneratingProjectIds);
   const tasks = useTaskStore((s) => s.tasks);
   const analyzingSpecIds = useTaskStore((s) => s.analyzingSpecIds);
+  const theme = useAppStore((s) => s.theme);
+  const toggleTheme = useAppStore((s) => s.toggleTheme);
 
   const activeCount =
     guidemapGeneratingProjectIds.size +
@@ -129,6 +131,13 @@ function AppHeader() {
         </button>
         {notifOpen && <AgentNotificationPopup onClose={() => setNotifOpen(false)} />}
       </div>
+      <button
+        className="header-icon-btn"
+        title={theme === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환'}
+        onClick={toggleTheme}
+      >
+        {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+      </button>
       <button className="header-icon-btn" title="설정">
         <Settings size={16} />
       </button>
@@ -278,6 +287,12 @@ function MainContent() {
 export default function App() {
   const { setProjects, selectProject } = useAppStore();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const theme = useAppStore((s) => s.theme);
+
+  // 초기 테마 적용
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   // 프로젝트 조회
   useEffect(() => {

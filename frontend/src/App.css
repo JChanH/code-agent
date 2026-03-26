@@ -19,6 +19,21 @@
   --bottom-h: 180px;
 }
 
+:root[data-theme="light"] {
+  --bg: #f0f2f5;
+  --bg-2: #ffffff;
+  --bg-3: #e4e7ed;
+  --border: #c8cdd8;
+  --text: #1a1d27;
+  --text-muted: #6b7280;
+  --accent: #6366f1;
+  --accent-hover: #4f52d9;
+  --danger: #ef4444;
+  --success: #16a34a;
+  --warning: #d97706;
+  --info: #2563eb;
+}
+
 html, body, #root {
   height: 100%;
   font-family: 'Inter', system-ui, sans-serif;

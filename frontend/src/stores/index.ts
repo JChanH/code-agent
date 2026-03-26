@@ -74,6 +74,7 @@ interface AppState {
   activeTab: ActiveTab;
   guidemapGeneratingProjectIds: Set<string>;
   logs: LogEntry[];
+  theme: 'dark' | 'light';
 
   setProjects: (projects: Project[]) => void;
   addProject: (project: Project) => void;
@@ -83,6 +84,7 @@ interface AppState {
   addLog: (level: LogLevel, msg: string) => void;
   clearLogs: () => void;
   handleWsMessage: (msg: WsMessage) => void;
+  toggleTheme: () => void;
 }
 
 // 전역에서 관리하는 상태값(싱글톤 -> 외부 컴포넌트에서든 같은 인스턴스를 유지한다)
@@ -93,6 +95,7 @@ export const useAppStore = create<AppState>((set) => ({
   activeTab: 'design', // 현재 활성된 탭
   guidemapGeneratingProjectIds: new Set(),
   logs: [],
+  theme: (localStorage.getItem('theme') as 'dark' | 'light') ?? 'dark',
 
   setProjects: (projects) => set({ projects }),
   addProject: (project) => set((s) => ({ projects: [...s.projects, project] })),
@@ -114,6 +117,14 @@ export const useAppStore = create<AppState>((set) => ({
     })),
 
   clearLogs: () => set({ logs: [] }),
+
+  toggleTheme: () =>
+    set((s) => {
+      const next = s.theme === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('theme', next);
+      document.documentElement.setAttribute('data-theme', next);
+      return { theme: next };
+    }),
 
   handleWsMessage: (msg) => {
     // 가이드맵 생성중
