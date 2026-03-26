@@ -16,7 +16,6 @@ for the design agent to reference.
 - Choose the reference file that best represents the typical pattern
   in that directory.
 - Do NOT embed code snippets in the guidemap.
-- Include naming conventions as a separate section.
 - Exclude directories unrelated to the request cycle
   (e.g., tests, scripts).
 

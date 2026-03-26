@@ -31,36 +31,44 @@ function makeLogId(): string {
 /** Extract a human-readable line from a raw Claude agent SDK message dump */
 function formatAgentMessage(raw: unknown): { level: LogLevel; msg: string } {
   if (!raw || typeof raw !== 'object') {
-    return { level: 'info', msg: String(raw).slice(0, 120) };
+    return { level: 'info', msg: String(raw) };
   }
   const m = raw as Record<string, unknown>;
 
-  // AssistantMessage: { role: "assistant", content: [...] }
-  if (m.role === 'assistant' && Array.isArray(m.content)) {
+  // AssistantMessage: { kind: "assistant", content: [...] }
+  if (m.kind === 'assistant' && Array.isArray(m.content)) {
     const parts: string[] = [];
     for (const block of m.content as Record<string, unknown>[]) {
       if (block.type === 'text' && typeof block.text === 'string') {
-        const snippet = block.text.trim().slice(0, 100);
+        const snippet = block.text.trim();
         if (snippet) parts.push(snippet);
       } else if (block.type === 'tool_use' && typeof block.name === 'string') {
-        const input = block.input ? JSON.stringify(block.input).slice(0, 60) : '';
+        const input = block.input ? JSON.stringify(block.input) : '';
         parts.push(`[${block.name}] ${input}`);
       }
     }
-    return { level: 'info', msg: parts.join(' | ') || '(assistant)' };
+    return { level: 'info', msg: parts.join('\n') || '(assistant)' };
   }
 
-  // ResultMessage: { result: "...", stop_reason: "..." }
-  if (typeof m.result === 'string') {
-    return { level: 'success', msg: `결과: ${m.result.slice(0, 100)}` };
+  // ProgressMessage: { kind: "progress", tool: "...", desc: "..." }
+  if (m.kind === 'progress') {
+    const tool = typeof m.tool === 'string' ? `[${m.tool}] ` : '';
+    const desc = typeof m.desc === 'string' ? m.desc : '';
+    return { level: 'info', msg: `${tool}${desc}` };
   }
 
-  // Fallback: show message type if available
-  if (typeof m.type === 'string') {
-    return { level: 'info', msg: `[${m.type}]` };
+  // TaskDoneMessage: { kind: "task_done", status: "...", summary: "..." }
+  if (m.kind === 'task_done') {
+    const summary = typeof m.summary === 'string' ? m.summary : '';
+    return { level: 'info', msg: summary };
   }
 
-  return { level: 'info', msg: JSON.stringify(raw).slice(0, 120) };
+  // ResultMessage: { kind: "result", text: "..." }
+  if (m.kind === 'result' && typeof m.text === 'string') {
+    return { level: 'success', msg: m.text };
+  }
+
+  return { level: 'info', msg: JSON.stringify(raw) };
 }
 
 // ── App Store ─────────────────────────────────────────────────────────────────
