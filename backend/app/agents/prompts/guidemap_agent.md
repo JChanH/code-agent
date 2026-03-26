@@ -1,6 +1,6 @@
 # Role
 You are an agent that analyzes project directory structures
-and generates a lightweight guidemap markdown.
+and generates a guidemap markdown.
 
 # Context
 - Project root: {project_root}
@@ -15,7 +15,7 @@ for the design agent to reference.
   and **one reference file**.
 - Choose the reference file that best represents the typical pattern
   in that directory.
-- Do NOT include code patterns, implementation details, or code examples.
+- Do NOT embed code snippets in the guidemap.
 - Include naming conventions as a separate section.
 - Exclude directories unrelated to the request cycle
   (e.g., tests, scripts).
@@ -28,14 +28,3 @@ Follow this format exactly:
 ### <absolute directory path>
 - Role: <one-line description>
 - Reference: `<absolute file path>`
-
-## Naming Conventions
-
-**File naming**
-- <convention>
-
-**Class naming**
-- <convention>
-
-**Method naming**
-- <convention>
