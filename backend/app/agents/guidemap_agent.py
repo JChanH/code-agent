@@ -10,7 +10,7 @@ from claude_agent_sdk import query, ClaudeAgentOptions
 from app.models import Project
 from app.websocket import make_broadcaster
 from app.websocket.messages import (
-    extract_agent_msg_data,
+    extract_meaningful_message,
     msg_agent_message,
     msg_guidemap_failed,
     msg_guidemap_generated,
@@ -79,12 +79,11 @@ async def generate_guidemap(project: Project) -> None:
         result_text: str | None = None
 
         async for message in query(prompt=prompt, options=options):
-            await broadcast(
-                msg_agent_message(
-                    extract_agent_msg_data(message),
-                    project_id=project_id
+            payload = extract_meaningful_message(message)
+            if payload is not None:
+                await broadcast(
+                    msg_agent_message(payload, project_id=project_id)
                 )
-            )
 
             if hasattr(message, "result") and message.result:
                 result_text = message.result
