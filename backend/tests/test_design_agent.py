@@ -59,7 +59,7 @@ class TestGetStackContext:
 
         with (
             patch("app.agents.design_agent.guidemap_exists", return_value=True),
-            patch("app.agents.design_agent.get_design_context", return_value="# Guidelines\n...") as mock_ctx,
+            patch("app.agents.design_agent.get_guidemap_context", return_value="# Guidelines\n...") as mock_ctx,
         ):
             from app.agents.design_agent import _get_stack_context
 

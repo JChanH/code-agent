@@ -1,6 +1,6 @@
 """설계 에이전트 v2 — 2단계 방식.
 
-1단계: claude-agent-sdk로 자유 분석 (output_format 없음)
+1단계: Claude API + agentic loop로 자유 분석 (read/glob/grep 도구 사용)
 2단계: anthropic API + tool_choice로 JSON 포맷팅
 """
 
@@ -11,13 +11,10 @@ from typing import Any
 
 import anthropic
 
-from claude_agent_sdk import query, ClaudeAgentOptions
-
 from app.models import Spec, Project, Task
 from app.repositories import spec_repository, project_repository
 from app.websocket import make_broadcaster
 from app.websocket.messages import (
-    extract_meaningful_message,
     msg_agent_message,
     msg_spec_analyzed,
     msg_spec_analyze_failed,
@@ -25,7 +22,8 @@ from app.websocket.messages import (
 )
 from app.utils.db_handler_sqlalchemy import db_conn
 from app.agents.prompts import load_prompt
-from app.agents.guidemap_agent import guidemap_exists, get_design_context
+from app.agents.guidemap_agent import guidemap_exists, get_guidemap_context
+from app.agents.tools.agent_loop import run_agent_loop
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -73,7 +71,7 @@ _FORMAT_TOOL: dict[str, Any] = {
 
 def _get_stack_context(project: Project, use_guidemap: bool = True) -> str:
     if use_guidemap and guidemap_exists(project.name):
-        design_context = get_design_context(project.name)
+        design_context = get_guidemap_context(project.name)
         return (
             f"- This is an existing project.\n"
             f"- Follow the project guide below:\n\n"
@@ -241,25 +239,30 @@ async def analyze_spec_and_create_tasks(spec_id: str, use_guidemap: bool = False
             use_guidemap=use_guidemap
         )
 
-        # 1단계: output_format 없이 자유 분석
-        options = ClaudeAgentOptions(
+        # 1단계: agentic loop로 자유 분석
+        settings = get_settings()
+        client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+
+        collected_texts: list[str] = []
+
+        async def on_message(payload: dict) -> None:
+            await broadcast(msg_agent_message(payload, spec_id=spec_id))
+            # 텍스트 블록 수집 (최종 분석 결과 취합용)
+            for item in payload.get("content", []):
+                if item.get("type") == "text":
+                    collected_texts.append(item["text"])
+
+        final_text, _ = await run_agent_loop(
+            client=client,
             model="claude-sonnet-4-6",
-            allowed_tools=["Read", "Glob", "Grep"],
-            permission_mode="default",  # bypassPermissions
+            messages=[{"role": "user", "content": prompt}],
+            tool_names=["read_file", "glob_files", "grep_search"],
             max_turns=30,
+            working_dir=project.local_repo_path,
+            on_message=on_message,
         )
 
-        free_text_parts: list[str] = []
-
-        async for message in query(prompt=prompt, options=options):
-            payload = extract_meaningful_message(message)
-            if payload is not None:
-                await broadcast(msg_agent_message(payload, spec_id=spec_id))
-
-            if hasattr(message, "result") and message.result:
-                free_text_parts.append(message.result)
-
-        free_text = "\n".join(free_text_parts)
+        free_text = final_text or "\n".join(collected_texts)
         if not free_text.strip():
             raise ValueError("Agent returned no analysis result.")
 
