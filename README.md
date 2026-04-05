@@ -19,10 +19,8 @@
 
 ```
 Electron (Desktop Shell)
-├── Frontend  — React 19 + TypeScript + Vite + TailwindCSS
-│               Zustand 상태 관리, Kanban 보드, Monaco 에디터, Diff Viewer
+├── Frontend  — React 19 + TypeScript + Vite
 └── Backend   — FastAPI + Anthropic API (Agentic Loop)
-                MySQL 영속성, Redis 메시지 큐, WebSocket 실시간 통신
 ```
 
 ---
@@ -115,7 +113,7 @@ Code Agent의 핵심은 네 개의 에이전트가 순서대로 협력하는 파
 
 | 항목 | 내용 |
 |---|---|
-| 입력 | 기획 문서 (PDF / DOCX / URL / 텍스트), guidemap |
+| 입력 | 기획 문서 (DOCX / 텍스트), guidemap |
 | 출력 | 태스크 목록 (DB 저장) |
 | 사용 도구 | `read_file`, `glob_files`, `grep_search` |
 | 최대 턴 | 30 (1단계) |
