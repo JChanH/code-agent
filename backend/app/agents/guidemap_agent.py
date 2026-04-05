@@ -5,18 +5,19 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from claude_agent_sdk import query, ClaudeAgentOptions
+import anthropic
 
 from app.models import Project
 from app.websocket import make_broadcaster
 from app.websocket.messages import (
-    extract_meaningful_message,
     msg_agent_message,
     msg_guidemap_failed,
     msg_guidemap_generated,
     msg_guidemap_generating,
 )
 from app.agents.prompts import load_prompt
+from app.agents.tools.agent_loop import run_agent_loop
+from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -68,25 +69,22 @@ async def generate_guidemap(project: Project) -> None:
     try:
         prompt = _build_prompt(project)
 
-        options = ClaudeAgentOptions(
+        settings = get_settings()
+        client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+
+        async def on_message(payload: dict) -> None:
+            await broadcast(msg_agent_message(payload, project_id=project_id))
+
+        result_text, _ = await run_agent_loop(
+            client=client,
             model="claude-sonnet-4-6",
             # model="claude-haiku-4-5-20251001",
-            allowed_tools=["Read", "Glob", "Grep"],
-            permission_mode="bypassPermissions",
+            messages=[{"role": "user", "content": prompt}],
+            tool_names=["read_file", "glob_files", "grep_search"],
             max_turns=30,
+            working_dir=project.local_repo_path,
+            on_message=on_message,
         )
-
-        result_text: str | None = None
-
-        async for message in query(prompt=prompt, options=options):
-            payload = extract_meaningful_message(message)
-            if payload is not None:
-                await broadcast(
-                    msg_agent_message(payload, project_id=project_id)
-                )
-
-            if hasattr(message, "result") and message.result:
-                result_text = message.result
 
         if not result_text:
             raise ValueError("Guidemap agent returned no content.")

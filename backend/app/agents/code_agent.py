@@ -5,12 +5,14 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from claude_agent_sdk import query, ClaudeAgentOptions
+import anthropic
 
 from app.models import Task, Project
 from app.agents.prompts import load_prompt
 from app.agents.guidemap_agent import guidemap_exists, get_guidemap_context
-from app.websocket.messages import BroadcastFn, extract_agent_msg_data, msg_agent_message
+from app.agents.tools.agent_loop import run_agent_loop
+from app.websocket.messages import BroadcastFn, msg_agent_message
+from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -81,13 +83,19 @@ async def run_code_agent(
     """
     prompt = _build_prompt(task, project, review_context)
 
-    options = ClaudeAgentOptions(
-        model="claude-sonnet-4-6",
-        allowed_tools=["Read", "Write", "Edit", "Glob", "Grep", "Bash"],
-        permission_mode="bypassPermissions",
-        max_turns=20,
-    )
+    settings = get_settings()
+    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
 
-    async for message in query(prompt=prompt, options=options):
+    async def on_message(payload: dict) -> None:
         if broadcast:
-            await broadcast(msg_agent_message(extract_agent_msg_data(message), task_id=task.id, agent="code"))
+            await broadcast(msg_agent_message(payload, task_id=task.id, agent="code"))
+
+    await run_agent_loop(
+        client=client,
+        model="claude-sonnet-4-6",
+        messages=[{"role": "user", "content": prompt}],
+        tool_names=["read_file", "write_file", "edit_file", "glob_files", "grep_search", "bash_exec"],
+        max_turns=20,
+        working_dir=project.local_repo_path,
+        on_message=on_message,
+    )
