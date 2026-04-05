@@ -23,8 +23,7 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-# TODO: 검토 후 True로 변경
-REVIEW_ENABLED = False
+REVIEW_ENABLED = True
 
 # submit_review_result 도구 — SDK의 output_format=json_schema 대체
 _SUBMIT_TOOL: dict[str, Any] = {
@@ -110,31 +109,31 @@ async def run_review_agent(
     settings = get_settings()
     client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
 
-    # 1단계: 테스트 작성 + pytest 실행 (자유 분석)
+    # 1단계: 테스트 작성 + pytest 실행 (자유 분석) — 히스토리 보존
     async def on_message(payload: dict) -> None:
         if broadcast:
             await broadcast(msg_agent_message(payload, task_id=task.id, agent="review"))
 
-    await run_agent_loop(
+    initial_messages = [{"role": "user", "content": prompt}]
+
+    _, history = await run_agent_loop(
         client=client,
         model="claude-sonnet-4-6",
-        messages=[{"role": "user", "content": prompt}],
+        messages=initial_messages,
         tool_names=["read_file", "glob_files", "grep_search", "write_file", "bash_exec"],
         max_turns=14,
         working_dir=project.local_repo_path,
         on_message=on_message,
     )
 
-    # 2단계: submit_review_result 도구 강제 호출로 구조화 결과 반환
-    review_messages = [
-        {
-            "role": "user",
-            "content": (
-                "테스트 실행이 완료되었습니다. "
-                "지금까지의 결과를 바탕으로 submit_review_result 도구를 사용해 최종 결과를 제출하세요."
-            ),
-        }
-    ]
+    # 2단계: 1단계 히스토리를 이어받아 submit_review_result 강제 호출
+    history.append({
+        "role": "user",
+        "content": (
+            "테스트 실행이 완료되었습니다. "
+            "지금까지의 결과를 바탕으로 submit_review_result 도구를 사용해 최종 결과를 제출하세요."
+        ),
+    })
 
     all_tools = get_tool_definitions(["read_file", "glob_files", "grep_search", "write_file", "bash_exec"])
     all_tools.append(_SUBMIT_TOOL)
@@ -144,7 +143,7 @@ async def run_review_agent(
     response = await client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=2048,
-        messages=review_messages,
+        messages=history,
         tools=all_tools,
         tool_choice={"type": "tool", "name": "submit_review_result"},
     )

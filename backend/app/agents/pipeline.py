@@ -1,4 +1,4 @@
-"""Development orchestrator — manages the code_agent → review_agent flow.
+"""Development pipeline — code_agent → review_agent 순차 실행 파이프라인.
 
 Flow:
   confirmed
@@ -131,7 +131,6 @@ async def _run_task_inner(task_id: str) -> None:
                 t = await task_repository.find_by_id(task_id, session)
                 if t:
                     t.status = "done"
-                    from datetime import datetime, timezone
                     t.completed_at = datetime.now(timezone.utc)
                     if commit_hash:
                         t.git_commit_hash = commit_hash
