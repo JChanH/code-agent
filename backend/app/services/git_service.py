@@ -1,65 +1,65 @@
-"""Git 서비스 레이어 — worktree 조회 및 Git 명령 위임."""
+"""Git 서비스 레이어 — 프로젝트 경로 조회 및 Git 명령 위임."""
 
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.exceptions.business import NotFoundException
 from app.utils.git import GitService
-from app.repositories import worktree_repository
+from app.repositories import project_repository
 
 
-def get_git_service(project_id: str, user_id: str, db: Session) -> GitService:
-    """사용자의 활성 worktree를 조회하고 GitService 인스턴스를 반환한다."""
-    worktree = worktree_repository.find_active_by_user_and_project(user_id, project_id, db)
-    if not worktree:
-        raise NotFoundException("No active worktree found for this user/project")
-    return GitService(worktree.worktree_path)
+async def get_git_service(project_id: str, session: AsyncSession) -> GitService:
+    """프로젝트의 로컬 저장소 경로를 조회하고 GitService 인스턴스를 반환한다."""
+    project = await project_repository.find_by_id(project_id, session)
+    if not project:
+        raise NotFoundException("Project not found")
+    return GitService(project.local_repo_path)
 
 
-def get_status(project_id: str, user_id: str, db: Session) -> list[dict]:
-    svc = get_git_service(project_id, user_id, db)
+async def get_status(project_id: str, session: AsyncSession) -> list[dict]:
+    svc = await get_git_service(project_id, session)
     return svc.get_status()
 
 
-def get_diff(project_id: str, user_id: str, file_path: str, staged: bool, db: Session) -> dict:
-    svc = get_git_service(project_id, user_id, db)
+async def get_diff(project_id: str, file_path: str, staged: bool, session: AsyncSession) -> dict:
+    svc = await get_git_service(project_id, session)
     return {"diff": svc.get_diff(file_path, staged=staged)}
 
 
-def stage_files(project_id: str, user_id: str, file_paths: list[str], db: Session) -> dict:
-    svc = get_git_service(project_id, user_id, db)
+async def stage_files(project_id: str, file_paths: list[str], session: AsyncSession) -> dict:
+    svc = await get_git_service(project_id, session)
     svc.stage_files(file_paths)
     return {"message": "Files staged", "files": file_paths}
 
 
-def commit(project_id: str, user_id: str, message: str, db: Session) -> dict:
-    svc = get_git_service(project_id, user_id, db)
+async def commit(project_id: str, message: str, session: AsyncSession) -> dict:
+    svc = await get_git_service(project_id, session)
     commit_hash = svc.commit(message)
     return {"message": "Committed", "hash": commit_hash}
 
 
-def pull(project_id: str, user_id: str, strategy: str, db: Session) -> dict:
-    svc = get_git_service(project_id, user_id, db)
+async def pull(project_id: str, strategy: str, session: AsyncSession) -> dict:
+    svc = await get_git_service(project_id, session)
     output = svc.pull(strategy=strategy)
     return {"message": "Pull completed", "output": output}
 
 
-def push(project_id: str, user_id: str, db: Session) -> dict:
-    svc = get_git_service(project_id, user_id, db)
+async def push(project_id: str, session: AsyncSession) -> dict:
+    svc = await get_git_service(project_id, session)
     output = svc.push()
     return {"message": "Push completed", "output": output}
 
 
-def get_log(project_id: str, user_id: str, count: int, db: Session) -> list[dict]:
-    svc = get_git_service(project_id, user_id, db)
+async def get_log(project_id: str, count: int, session: AsyncSession) -> list[dict]:
+    svc = await get_git_service(project_id, session)
     return svc.get_log(count=count)
 
 
-def revert_file(project_id: str, user_id: str, file_path: str, db: Session) -> dict:
-    svc = get_git_service(project_id, user_id, db)
+async def revert_file(project_id: str, file_path: str, session: AsyncSession) -> dict:
+    svc = await get_git_service(project_id, session)
     svc.revert_file(file_path)
     return {"message": f"Reverted: {file_path}"}
 
 
-def get_current_branch(project_id: str, user_id: str, db: Session) -> dict:
-    svc = get_git_service(project_id, user_id, db)
+async def get_current_branch(project_id: str, session: AsyncSession) -> dict:
+    svc = await get_git_service(project_id, session)
     return {"branch": svc.get_current_branch()}

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { Bell, Settings, Code2, Trash2, Loader2, CheckCircle2, Sun, Moon } from 'lucide-react';
 import ComingSoon from './components/common/ComingSoon';
 import Sidebar from './components/common/Sidebar';
-import { useAppStore, useTaskStore, CURRENT_USER_ID } from './stores';
+import { useAppStore, useTaskStore } from './stores';
 import { useWebSocket } from './hooks/useWebSocket';
 import { getProjects } from './api/project/projectApis';
 import './App.css';
@@ -93,7 +93,6 @@ function AgentNotificationPopup({ onClose }: { onClose: () => void }) {
 // ── Header ────────────────────────────────────────────────────────────────────
 
 function AppHeader() {
-  const initial = (CURRENT_USER_ID[0] ?? 'U').toUpperCase();
   const [notifOpen, setNotifOpen] = useState(false);
 
   const guidemapGeneratingProjectIds = useAppStore((s) => s.guidemapGeneratingProjectIds);
@@ -114,10 +113,6 @@ function AppHeader() {
         <span>Code Agent</span>
       </div>
       <div className="header-spacer" />
-      <div className="header-user">
-        <span>사용자: {CURRENT_USER_ID}</span>
-        <div className="header-avatar">{initial}</div>
-      </div>
       <div style={{ position: 'relative' }}>
         <button
           className={`header-icon-btn${notifOpen ? ' active' : ''}`}

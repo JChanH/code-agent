@@ -73,9 +73,6 @@ function formatAgentMessage(raw: unknown): { level: LogLevel; msg: string } {
 
 // ── App Store ─────────────────────────────────────────────────────────────────
 
-// MVP: 단일 사용자 고정
-export const CURRENT_USER_ID = '1';
-
 interface AppState {
   projects: Project[];
   selectedProjectId: string | null;

@@ -169,23 +169,20 @@ export async function finalConfirmSpec(specId: string): Promise<void> {
 
 // ── Git ───────────────────────────────────────────────────────────────────────
 
-/** 사용자 worktree의 변경 파일 목록 조회 (git status) */
-export async function getGitStatus(projectId: string, userId: string): Promise<GitFileStatus[]> {
-  const response = await client.get<GitFileStatus[]>(`/api/projects/${projectId}/git/status`, {
-    params: { user_id: userId },
-  });
+/** 변경 파일 목록 조회 (git status) */
+export async function getGitStatus(projectId: string): Promise<GitFileStatus[]> {
+  const response = await client.get<GitFileStatus[]>(`/api/projects/${projectId}/git/status`);
   return response.data;
 }
 
 /** 특정 파일의 변경 내용 조회 (git diff). staged=true이면 staged diff 반환 */
 export async function getGitDiff(
   projectId: string,
-  userId: string,
   filePath: string,
   staged = false,
 ): Promise<{ diff: string }> {
   const response = await client.get<{ diff: string }>(`/api/projects/${projectId}/git/diff`, {
-    params: { user_id: userId, file_path: filePath, staged },
+    params: { file_path: filePath, staged },
   });
   return response.data;
 }
@@ -193,13 +190,11 @@ export async function getGitDiff(
 /** 선택한 파일들을 staging area에 추가 (git add) */
 export async function stageFiles(
   projectId: string,
-  userId: string,
   filePaths: string[],
 ): Promise<void> {
   const response = await client.post(
     `/api/projects/${projectId}/git/stage`,
     { file_paths: filePaths },
-    { params: { user_id: userId } },
   );
   return response.data;
 }
@@ -207,13 +202,11 @@ export async function stageFiles(
 /** staged 파일들을 커밋 (git commit -m) */
 export async function commitGit(
   projectId: string,
-  userId: string,
   message: string,
 ): Promise<void> {
   const response = await client.post(
     `/api/projects/${projectId}/git/commit`,
     { message },
-    { params: { user_id: userId } },
   );
   return response.data;
 }
@@ -221,35 +214,28 @@ export async function commitGit(
 /** 원격 브랜치에서 변경사항을 가져옴 (git pull). strategy: rebase | merge */
 export async function pullGit(
   projectId: string,
-  userId: string,
   strategy: 'rebase' | 'merge' = 'rebase',
 ): Promise<void> {
   const response = await client.post(
     `/api/projects/${projectId}/git/pull`,
     { strategy },
-    { params: { user_id: userId } },
   );
   return response.data;
 }
 
 /** 현재 브랜치를 원격에 push (git push) */
-export async function pushGit(projectId: string, userId: string): Promise<void> {
-  const response = await client.post(
-    `/api/projects/${projectId}/git/push`,
-    {},
-    { params: { user_id: userId } },
-  );
+export async function pushGit(projectId: string): Promise<void> {
+  const response = await client.post(`/api/projects/${projectId}/git/push`, {});
   return response.data;
 }
 
 /** 커밋 히스토리 조회 (git log). count: 최대 반환 개수 */
 export async function getGitLog(
   projectId: string,
-  userId: string,
   count = 20,
 ): Promise<GitLogEntry[]> {
   const response = await client.get<GitLogEntry[]>(`/api/projects/${projectId}/git/log`, {
-    params: { user_id: userId, count },
+    params: { count },
   });
   return response.data;
 }
@@ -257,22 +243,16 @@ export async function getGitLog(
 /** 특정 파일의 변경사항을 되돌림 (git checkout -- <file>) */
 export async function revertGitFile(
   projectId: string,
-  userId: string,
   filePath: string,
 ): Promise<void> {
   const response = await client.post(`/api/projects/${projectId}/git/revert`, null, {
-    params: { user_id: userId, file_path: filePath },
+    params: { file_path: filePath },
   });
   return response.data;
 }
 
 /** 현재 체크아웃된 브랜치 이름 조회 (git branch --show-current) */
-export async function getGitBranch(
-  projectId: string,
-  userId: string,
-): Promise<{ branch: string }> {
-  const response = await client.get<{ branch: string }>(`/api/projects/${projectId}/git/branch`, {
-    params: { user_id: userId },
-  });
+export async function getGitBranch(projectId: string): Promise<{ branch: string }> {
+  const response = await client.get<{ branch: string }>(`/api/projects/${projectId}/git/branch`);
   return response.data;
 }

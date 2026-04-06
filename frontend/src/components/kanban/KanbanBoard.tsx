@@ -1,7 +1,7 @@
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
 import KanbanColumn from './KanbanColumn';
-import type { Task, TaskStatus, User } from '../../types';
+import type { Task, TaskStatus } from '../../types';
 
 interface ColumnDef {
   id: TaskStatus;
@@ -11,13 +11,12 @@ interface ColumnDef {
 interface Props {
   columns: ColumnDef[];
   tasks: Task[];
-  users?: User[];
   onStatusChange: (taskId: string, newStatus: TaskStatus) => void;
   onCardClick?: (task: Task) => void;
   onRun?: (taskId: string) => void;
 }
 
-export default function KanbanBoard({ columns, tasks, users = [], onStatusChange, onCardClick, onRun }: Props) {
+export default function KanbanBoard({ columns, tasks, onStatusChange, onCardClick, onRun }: Props) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   function getColumnIdForTask(task: Task): TaskStatus | null {
@@ -70,7 +69,6 @@ export default function KanbanBoard({ columns, tasks, users = [], onStatusChange
             id={col.id}
             title={col.title}
             tasks={tasks.filter((t) => getColumnIdForTask(t) === col.id)}
-            users={users}
             onCardClick={onCardClick}
             onRun={onRun}
           />

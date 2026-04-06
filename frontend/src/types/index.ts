@@ -28,8 +28,6 @@ export type TaskStatus =
 export type SpecSourceType = 'document' | 'image' | 'text' | 'url';
 export type SpecStatus = 'uploaded' | 'analyzing' | 'final_confirmed';
 
-export type WorktreeStatus = 'active' | 'inactive' | 'archived';
-
 export type ActiveTab = 'dashboard' | 'design' | 'dev' | 'console' | 'git' | 'settings' | 'legacy' | 'runtime_errors';
 
 // ── Domain Models ─────────────────────────────────────────────────────────────
@@ -48,28 +46,10 @@ export interface Project {
   updated_at: string;
 }
 
-export interface User {
-  id: string;
-  username: string;
-  display_name: string | null;
-  created_at: string;
-}
-
-export interface UserWorktree {
-  id: string;
-  user_id: string;
-  project_id: string;
-  worktree_path: string;
-  branch_name: string;
-  status: WorktreeStatus;
-  created_at: string;
-}
-
 export interface Task {
   id: string;
   project_id: string;
   spec_id: string | null;
-  assigned_user_id: string | null;
   title: string;
   description: string;
   acceptance_criteria: string[] | null;
@@ -118,7 +98,6 @@ export interface ProjectCreate {
 export interface TaskCreate {
   project_id: string;
   spec_id?: string;
-  assigned_user_id?: string;
   title: string;
   description: string;
   acceptance_criteria?: string[];
@@ -127,7 +106,6 @@ export interface TaskCreate {
 export interface TaskUpdate {
   title?: string;
   description?: string;
-  assigned_user_id?: string;
   status?: TaskStatus;
 }
 

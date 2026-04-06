@@ -41,7 +41,6 @@ export interface Task {
   id: string;
   project_id: string;
   spec_id: string | null;
-  assigned_user_id: string | null;
   title: string;
   description: string;
   acceptance_criteria: string[] | null;
@@ -54,7 +53,6 @@ export interface Task {
 export interface TaskCreate {
   project_id: string;
   spec_id?: string;
-  assigned_user_id?: string;
   title: string;
   description: string;
   acceptance_criteria?: string[];
@@ -63,7 +61,6 @@ export interface TaskCreate {
 export interface TaskUpdate {
   title?: string;
   description?: string;
-  assigned_user_id?: string;
   status?: TaskStatus;
 }
 

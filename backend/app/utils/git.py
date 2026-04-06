@@ -1,79 +1,11 @@
-"""Git worktree management and git operations service."""
+"""Git operations service."""
 
 import subprocess
 import os
-from pathlib import Path
-from typing import Optional
-
-
-class WorktreeManager:
-    """Manages per-user git worktrees."""
-
-    def __init__(self, repo_path: str):
-        self.repo_path = Path(repo_path)
-
-    def create_worktree(self, user_id: str, branch_name: str) -> str:
-        """Create a worktree for a user. Returns the worktree path."""
-        worktree_path = self.repo_path / "worktrees" / user_id
-
-        if worktree_path.exists():
-            return str(worktree_path)
-
-        worktree_path.parent.mkdir(parents=True, exist_ok=True)
-
-        subprocess.run(
-            ["git", "worktree", "add", str(worktree_path), "-b", branch_name],
-            cwd=str(self.repo_path),
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        return str(worktree_path)
-
-    def get_worktree_path(self, user_id: str) -> Optional[str]:
-        """Return the worktree path for a user, or None if it doesn't exist."""
-        worktree_path = self.repo_path / "worktrees" / user_id
-        return str(worktree_path) if worktree_path.exists() else None
-
-    def remove_worktree(self, user_id: str) -> None:
-        """Remove a user's worktree."""
-        worktree_path = self.repo_path / "worktrees" / user_id
-        if worktree_path.exists():
-            subprocess.run(
-                ["git", "worktree", "remove", str(worktree_path), "--force"],
-                cwd=str(self.repo_path),
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-
-    def list_worktrees(self) -> list[dict]:
-        """List all worktrees in the repository."""
-        result = subprocess.run(
-            ["git", "worktree", "list", "--porcelain"],
-            cwd=str(self.repo_path),
-            capture_output=True,
-            text=True,
-        )
-        worktrees = []
-        current: dict = {}
-        for line in result.stdout.strip().split("\n"):
-            if line.startswith("worktree "):
-                if current:
-                    worktrees.append(current)
-                current = {"path": line.split(" ", 1)[1]}
-            elif line.startswith("HEAD "):
-                current["head"] = line.split(" ", 1)[1]
-            elif line.startswith("branch "):
-                current["branch"] = line.split(" ", 1)[1]
-        if current:
-            worktrees.append(current)
-        return worktrees
 
 
 class GitService:
-    """Git operations for the Git Management tab.
-    All operations are performed within a user's worktree."""
+    """Git operations for the Git Management tab."""
 
     def __init__(self, worktree_path: str):
         self.worktree_path = worktree_path

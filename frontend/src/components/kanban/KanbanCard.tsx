@@ -16,12 +16,11 @@ const MOCK_PROGRESS: Partial<Record<TaskStatus, number>> = {};
 
 interface Props {
   task: Task;
-  assigneeName?: string;
   onClick?: () => void;
   onRun?: (taskId: string) => void;
 }
 
-export default function KanbanCard({ task, assigneeName, onClick, onRun }: Props) {
+export default function KanbanCard({ task, onClick, onRun }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: task.id });
 
@@ -32,7 +31,6 @@ export default function KanbanCard({ task, assigneeName, onClick, onRun }: Props
   };
 
   const progress = MOCK_PROGRESS[task.status];
-  const initial = assigneeName ? assigneeName[0].toUpperCase() : null;
 
   return (
     <div
@@ -58,14 +56,8 @@ export default function KanbanCard({ task, assigneeName, onClick, onRun }: Props
         </div>
       )}
 
-      {/* 하단: 담당자 + 액션 */}
+      {/* 하단: 액션 */}
       <div className="kanban-card-footer">
-        {assigneeName && (
-          <div className="kanban-card-assignee">
-            <span className="card-avatar">{initial}</span>
-            <span>@{assigneeName}</span>
-          </div>
-        )}
         {progress !== undefined && (
           <span className="card-tag">{progress}%</span>
         )}

@@ -1,4 +1,4 @@
-import type { GitFileStatus, GitLogEntry, Project, Task, User } from '../types';
+import type { GitFileStatus, GitLogEntry, Project, Task } from '../types';
 
 // ── Projects ──────────────────────────────────────────────────────────────────
 
@@ -41,13 +41,6 @@ export const MOCK_PROJECTS: Project[] = [
   },
 ];
 
-// ── Users ─────────────────────────────────────────────────────────────────────
-
-export const MOCK_USERS: User[] = [
-  { id: 'u1', username: 'kim', display_name: 'Kim', created_at: '2026-03-01T00:00:00Z' },
-  { id: 'u2', username: 'lee', display_name: 'Lee', created_at: '2026-03-01T00:00:00Z' },
-];
-
 // ── Tasks ─────────────────────────────────────────────────────────────────────
 // 상태 흐름:
 //   설계 칸반: backlog(Spec 입력) → planning(AI 분석중) → plan_review(Task 분해됨) → coding(확정됨)
@@ -59,7 +52,6 @@ export const MOCK_TASKS: Task[] = [
     id: 'd1',
     project_id: 'p1',
     spec_id: null,
-    assigned_user_id: 'u1',
     title: '사용자 인증 Spec',
     description: '로그인/회원가입/OAuth 플로우 정의',
     acceptance_criteria: null,
@@ -72,7 +64,6 @@ export const MOCK_TASKS: Task[] = [
     id: 'd2',
     project_id: 'p1',
     spec_id: null,
-    assigned_user_id: 'u2',
     title: 'API 설계 문서',
     description: 'REST API 엔드포인트 명세',
     acceptance_criteria: null,
@@ -85,7 +76,6 @@ export const MOCK_TASKS: Task[] = [
     id: 'd3',
     project_id: 'p1',
     spec_id: null,
-    assigned_user_id: 'u1',
     title: 'DB 스키마 정의',
     description: '사용자/세션 테이블 설계',
     acceptance_criteria: null,
@@ -98,7 +88,6 @@ export const MOCK_TASKS: Task[] = [
     id: 'd4',
     project_id: 'p1',
     spec_id: null,
-    assigned_user_id: 'u2',
     title: 'UI/UX 가이드라인',
     description: '컴포넌트 디자인 시스템 정의',
     acceptance_criteria: null,
@@ -113,7 +102,6 @@ export const MOCK_TASKS: Task[] = [
     id: 'v1',
     project_id: 'p1',
     spec_id: null,
-    assigned_user_id: 'u1',
     title: '로그인 API 구현',
     description: 'POST /auth/login 엔드포인트',
     acceptance_criteria: null,
@@ -126,7 +114,6 @@ export const MOCK_TASKS: Task[] = [
     id: 'v2',
     project_id: 'p1',
     spec_id: null,
-    assigned_user_id: 'u1',
     title: '회원가입 플로우',
     description: '이메일 검증 포함 회원가입',
     acceptance_criteria: null,
@@ -139,7 +126,6 @@ export const MOCK_TASKS: Task[] = [
     id: 'v3',
     project_id: 'p1',
     spec_id: null,
-    assigned_user_id: 'u2',
     title: '프로필 수정 기능',
     description: 'PATCH /users/{id} 엔드포인트',
     acceptance_criteria: null,
@@ -152,7 +138,6 @@ export const MOCK_TASKS: Task[] = [
     id: 'v4',
     project_id: 'p1',
     spec_id: null,
-    assigned_user_id: 'u2',
     title: '이메일 인증 모듈',
     description: '인증 링크 발송 및 토큰 검증',
     acceptance_criteria: null,
@@ -165,7 +150,6 @@ export const MOCK_TASKS: Task[] = [
     id: 'v5',
     project_id: 'p1',
     spec_id: null,
-    assigned_user_id: 'u1',
     title: 'JWT 토큰 서비스',
     description: 'Access/Refresh 토큰 발급 및 검증',
     acceptance_criteria: null,
@@ -178,7 +162,6 @@ export const MOCK_TASKS: Task[] = [
     id: 'v6',
     project_id: 'p1',
     spec_id: null,
-    assigned_user_id: 'u2',
     title: '비밀번호 재설정',
     description: '이메일 기반 비밀번호 초기화',
     acceptance_criteria: null,

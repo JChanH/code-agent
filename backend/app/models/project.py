@@ -87,17 +87,6 @@ class Project(Base):
         back_populates="project",
         cascade="all, delete-orphan",
     )
-    worktrees: Mapped[list["UserWorktree"]] = relationship(
-        "UserWorktree",
-        back_populates="project",
-        cascade="all, delete-orphan",
-    )
-    security_profile: Mapped[Optional["SecurityProfile"]] = relationship(
-        "SecurityProfile",
-        back_populates="project",
-        uselist=False,
-        cascade="all, delete-orphan",
-    )
     settings: Mapped[list["Setting"]] = relationship(
         "Setting",
         back_populates="project",

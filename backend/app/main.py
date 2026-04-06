@@ -20,13 +20,10 @@ from app.api import (
     legacy_router,
     project_specs_router,
     project_tasks_router,
-    project_worktrees_router,
     projects_router,
     runtime_errors_router,
     specs_router,
     tasks_router,
-    users_router,
-    worktrees_router,
 )
 from app.websocket import ws_manager
 from app.exceptions.business import BusinessException
@@ -79,9 +76,6 @@ def health():
 
 # ── REST API routers ─────────────────────────
 app.include_router(projects_router, prefix="/api")
-app.include_router(users_router, prefix="/api")
-app.include_router(project_worktrees_router, prefix="/api")
-app.include_router(worktrees_router, prefix="/api")
 app.include_router(project_tasks_router, prefix="/api")
 app.include_router(tasks_router, prefix="/api")
 app.include_router(project_specs_router, prefix="/api")

@@ -274,11 +274,7 @@ export default function DesignPhase({ projectId }: { projectId: string }) {
     storeUpdateTask(editingTask.id, patch);
     setEditingTask(null);
     try {
-      const { assigned_user_id, ...rest } = patch;
-      await updateTask(editingTask.id, {
-        ...rest,
-        ...(assigned_user_id !== null ? { assigned_user_id } : {}),
-      });
+      await updateTask(editingTask.id, patch);
     } catch {
       setError('Task 수정에 실패했습니다.');
     }

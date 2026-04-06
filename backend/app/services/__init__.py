@@ -6,8 +6,6 @@ from app.services import (
     runtime_errors_service,
     specs_service,
     tasks_service,
-    users_service,
-    worktrees_service,
 )
 
 __all__ = [
@@ -16,6 +14,4 @@ __all__ = [
     "runtime_errors_service",
     "specs_service",
     "tasks_service",
-    "users_service",
-    "worktrees_service",
 ]

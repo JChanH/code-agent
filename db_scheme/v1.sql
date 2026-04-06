@@ -85,22 +85,6 @@ CREATE TABLE `tasks` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ============================================
--- 프로젝트 스택 보안 프로파일
--- ============================================
-CREATE TABLE security_profiles (
-    id              VARCHAR(36) PRIMARY KEY,
-    project_id      VARCHAR(36) NOT NULL,
-    stack_type      ENUM('python', 'java', 'other') NOT NULL,
-    allowed_commands JSON NOT NULL,                 -- ["pip", "pytest", "ruff", ...]
-    blocked_commands JSON NOT NULL,                 -- ["rm -rf", "sudo", ...]
-    allowed_paths    JSON,                          -- 수정 허용 경로 패턴
-    blocked_paths    JSON,                          -- 수정 차단 경로 패턴
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-);
-
--- ============================================
 -- 설정 관리
 -- ============================================
 CREATE TABLE settings (

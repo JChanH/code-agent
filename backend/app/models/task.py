@@ -32,12 +32,6 @@ class Task(Base):
         ForeignKey("specs.id", ondelete="SET NULL"),
     )
     
-    # 담당 유저 아이디
-    assigned_user_id: Mapped[Optional[str]] = mapped_column(
-        String(36),
-        ForeignKey("users.id", ondelete="SET NULL"),
-    )
-    
     # 제목
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     
@@ -77,5 +71,4 @@ class Task(Base):
 
     project: Mapped["Project"] = relationship("Project", back_populates="tasks")
     spec: Mapped[Optional["Spec"]] = relationship("Spec", back_populates="tasks")
-    assigned_user: Mapped[Optional["User"]] = relationship("User", back_populates="assigned_tasks")
 

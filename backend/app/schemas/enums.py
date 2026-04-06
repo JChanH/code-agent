@@ -59,7 +59,3 @@ class SpecStatus(str, Enum):
     final_confirmed = "final_confirmed"
 
 
-class WorktreeStatus(str, Enum):
-    active = "active"
-    inactive = "inactive"
-    archived = "archived"
