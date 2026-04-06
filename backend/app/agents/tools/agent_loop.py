@@ -13,11 +13,21 @@ from typing import Any, Callable, Awaitable
 import anthropic
 
 from app.agents.tools.registry import get_tool_definitions, dispatch_tool
+from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
 # on_message 콜백 타입: (text_content, tool_name | None) → None
 OnMessageFn = Callable[[dict[str, Any]], Awaitable[None] | None]
+
+_semaphore: asyncio.Semaphore | None = None
+
+
+def get_semaphore() -> asyncio.Semaphore:
+    global _semaphore
+    if _semaphore is None:
+        _semaphore = asyncio.Semaphore(get_settings().max_concurrent_tasks)
+    return _semaphore
 
 
 async def run_agent_loop(
@@ -50,13 +60,38 @@ async def run_agent_loop(
     Returns:
         (마지막 텍스트 출력, 최종 messages 리스트)
     """
+    async with get_semaphore():
+        return await _run_agent_loop_inner(
+            client=client,
+            model=model,
+            messages=messages,
+            tool_names=tool_names,
+            max_turns=max_turns,
+            working_dir=working_dir,
+            tool_choice=tool_choice,
+            system=system,
+            on_message=on_message,
+            turn_delay=turn_delay,
+        )
+
+
+async def _run_agent_loop_inner(
+    client: anthropic.AsyncAnthropic,
+    model: str,
+    messages: list[dict[str, Any]],
+    tool_names: list[str],
+    max_turns: int,
+    working_dir: str | None = None,
+    tool_choice: dict[str, Any] | None = None,
+    system: str | None = None,
+    on_message: OnMessageFn | None = None,
+    turn_delay: float = 1.0,
+) -> tuple[str, list[dict[str, Any]]]:
     tools = get_tool_definitions(tool_names) if tool_names else []
     effective_tool_choice = tool_choice or {"type": "auto"}
 
     final_text = ""
     turns = 0
-
-    logger.info("XXX messages: %s", messages)
 
     while turns < max_turns:
         turns += 1

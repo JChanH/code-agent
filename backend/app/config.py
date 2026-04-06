@@ -29,7 +29,7 @@ class Settings(BaseSettings):
 
     # Anthropic
     anthropic_api_key: str = ""
-    max_concurrent_tasks: int = Field(default=3, validation_alias="MAX_CONCURRENT_TASKS")
+    max_concurrent_tasks: int = Field(default=2, validation_alias="MAX_CONCURRENT_TASKS")
 
     @property
     def redis_url(self) -> str:

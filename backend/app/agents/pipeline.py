@@ -11,13 +11,11 @@ Flow:
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import datetime, timezone
 
 from app.agents.code_agent import run_code_agent
 from app.agents.review_agent import run_review_agent, ReviewResult
-from app.config import get_settings
 from app.repositories import task_repository, project_repository
 from app.utils.db_handler_sqlalchemy import db_conn
 from app.utils.git import GitService
@@ -27,15 +25,6 @@ from app.websocket.messages import msg_task_update, msg_review_result
 logger = logging.getLogger(__name__)
 
 MAX_RETRIES = 3
-
-_semaphore: asyncio.Semaphore | None = None
-
-
-def get_semaphore() -> asyncio.Semaphore:
-    global _semaphore
-    if _semaphore is None:
-        _semaphore = asyncio.Semaphore(get_settings().max_concurrent_tasks)
-    return _semaphore
 
 
 async def _update_task_status(task_id: str, status: str) -> None:
@@ -57,8 +46,7 @@ async def run_task(task_id: str) -> None:
 
     :param task_id: ID of the Task to run (status must be 'confirmed')
     """
-    async with get_semaphore():
-        await _run_task_inner(task_id)
+    await _run_task_inner(task_id)
 
 
 async def _run_task_inner(task_id: str) -> None:
