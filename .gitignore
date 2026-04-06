@@ -34,3 +34,7 @@ __pycache__/
 uploads/*
 backend/uploads/uploads/*
 .claude/
+EDITOR_REVIEW_PLAN.md
+IMPROVEMENT_PLAN.md
+.gitignore
+MIGRATION_PLAN.md

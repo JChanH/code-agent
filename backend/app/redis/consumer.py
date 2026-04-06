@@ -29,6 +29,10 @@ class RuntimeErrorConsumer:
         self._task: asyncio.Task | None = None
         self._running = False
 
+    @property
+    def is_running(self) -> bool:
+        return self._running and self._task is not None and not self._task.done()
+
     # 앱 시작할때 + redis 시작 이후에 시작
     def start(self) -> None:
         self._running = True

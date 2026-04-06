@@ -77,13 +77,13 @@ async def generate_guidemap(project: Project) -> None:
 
         result_text, _ = await run_agent_loop(
             client=client,
-            model="claude-sonnet-4-6",
-            # model="claude-haiku-4-5-20251001",
+            model="claude-haiku-4-5-20251001",
             messages=[{"role": "user", "content": prompt}],
             tool_names=["read_file", "glob_files", "grep_search"],
-            max_turns=30,
+            max_turns=20,
             working_dir=project.local_repo_path,
             on_message=on_message,
+            turn_delay=1.5,
         )
 
         if not result_text:
