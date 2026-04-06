@@ -22,11 +22,6 @@ _GUIDELINE_PATH = Path(__file__).parent / "guidemap" / "PYTHON_FASTAPI_BACKEND_G
 
 def _build_prompt(task: Task, project: Project, review_context: dict | None = None) -> str:
     # TODO 좀더 구조적으로 정리할수 있는지 코드 분석하기
-    criteria_text = ""
-    if task.acceptance_criteria:
-        criteria_list = "\n".join(f"  - {c}" for c in task.acceptance_criteria)
-        criteria_text = f"\n## Acceptance Criteria\n{criteria_list}\n"
-
     plan_section = ""
     if task.implementation_steps:
         steps_list = "\n".join(f"  {i + 1}. {s}" for i, s in enumerate(task.implementation_steps))
@@ -56,7 +51,6 @@ def _build_prompt(task: Task, project: Project, review_context: dict | None = No
         "code_agent.md",
         task_title=task.title,
         task_description=task.description,
-        criteria_text=criteria_text,
         project_name=project.name,
         project_stack=project.project_stack,
         framework=project.framework or "unspecified",

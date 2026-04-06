@@ -4,7 +4,7 @@ Implement the Task below. Tests will be written and executed by a separate revie
 ## Task
 - Title: $task_title
 - Description: $task_description
-$criteria_text
+
 ## Project Context
 - Name: $project_name
 - Stack: $project_stack / $framework

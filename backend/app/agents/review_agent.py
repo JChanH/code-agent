@@ -59,10 +59,44 @@ class ReviewResult:
     overall_feedback: str
 
 
-def _make_test_file_path(task: Task, local_repo_path: str) -> str:
+def _make_test_file_path(task: Task, project: Project) -> str:
     """Task 제목과 ID로부터 고유한 테스트 파일 경로를 생성합니다."""
     slug = re.sub(r"[^a-z0-9]+", "_", task.title.lower())[:30].strip("_")
-    return f"{local_repo_path}/tests/test_{slug}_{task.id[:6]}.py"
+    stack = project.project_stack or "unknown"
+    ext = _test_file_extension(stack)
+    return f"{project.local_repo_path}/tests/test_{slug}_{task.id[:6]}{ext}"
+
+
+def _test_file_extension(stack: str) -> str:
+    extensions = {
+        "python": ".py",
+        "java": ".java",
+        "node": ".test.ts",
+    }
+    return extensions.get(stack, ".py")
+
+
+def _build_stack_instructions(project: Project) -> str:
+    """스택별 테스트 작성 지침을 반환합니다. 새 스택 추가 시 여기에만 추가하면 됩니다."""
+    stack = project.project_stack or ""
+    local_repo_path = project.local_repo_path
+
+    if stack == "python":
+        return (
+            f"- Add `import sys; sys.path.insert(0, '{local_repo_path}/backend')` at the top\n"
+            "- Import only the service function being tested\n"
+            "- Mock only the repository layer using `AsyncMock` and `patch`\n"
+            "- Use `pytest.mark.asyncio` for async service functions\n"
+            f"- Run: `cd {local_repo_path}/backend && python -m pytest $test_file_path -v 2>&1`"
+        )
+
+    # 추후 지원 예정
+    # if stack == "java":
+    #     return "- Use JUnit 5 + Mockito ..."
+    # if stack == "node":
+    #     return "- Use Jest + ts-jest ..."
+
+    return "- Follow the project's existing test conventions"
 
 
 def _build_prompt(task: Task, project: Project) -> str:
@@ -71,7 +105,8 @@ def _build_prompt(task: Task, project: Project) -> str:
         criteria_list = "\n".join(f"  - {c}" for c in task.acceptance_criteria)
         criteria_text = f"\n## Acceptance Criteria\n{criteria_list}\n"
 
-    test_file_path = _make_test_file_path(task, project.local_repo_path)
+    test_file_path = _make_test_file_path(task, project)
+    stack_instructions = _build_stack_instructions(project)
 
     return load_prompt(
         "review_agent.md",
@@ -80,6 +115,7 @@ def _build_prompt(task: Task, project: Project) -> str:
         criteria_text=criteria_text,
         local_repo_path=project.local_repo_path,
         test_file_path=test_file_path,
+        stack_instructions=stack_instructions,
     )
 
 
@@ -121,7 +157,7 @@ async def run_review_agent(
         model="claude-sonnet-4-6",
         messages=initial_messages,
         tool_names=["read_file", "glob_files", "grep_search", "write_file", "bash_exec"],
-        max_turns=14,
+        max_turns=25,
         working_dir=project.local_repo_path,
         on_message=on_message,
     )
