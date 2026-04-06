@@ -207,6 +207,8 @@ async def handle_edit_file(input: dict[str, Any], working_dir: str | None = None
         return f"[Error writing file: {e}]"
 
 
+_GLOB_MAX_RESULTS = 300
+
 async def handle_glob_files(input: dict[str, Any], working_dir: str | None = None) -> str:
     pattern: str = input["pattern"]
     base_dir_str: str | None = input.get("base_dir")
@@ -222,6 +224,13 @@ async def handle_glob_files(input: dict[str, Any], working_dir: str | None = Non
         matches = sorted(str(p) for p in base.glob(pattern))
         if not matches:
             return "[No files matched]"
+        if len(matches) > _GLOB_MAX_RESULTS:
+            truncated = matches[:_GLOB_MAX_RESULTS]
+            return (
+                "\n".join(truncated)
+                + f"\n\n[WARNING: {len(matches)} files matched but only {_GLOB_MAX_RESULTS} shown. "
+                "Use a more specific pattern or subdirectory to narrow results.]"
+            )
         return "\n".join(matches)
     except Exception as e:
         return f"[Error: {e}]"
