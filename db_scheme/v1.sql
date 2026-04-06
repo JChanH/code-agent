@@ -17,30 +17,6 @@ CREATE TABLE projects (
 );
 
 -- ============================================
--- 사용자 및 Worktree 관리
--- ============================================
-CREATE TABLE users (
-    id              VARCHAR(36) PRIMARY KEY,
-    username        VARCHAR(100) NOT NULL UNIQUE,
-    display_name    VARCHAR(255),                   -- 표시 이름
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE user_worktrees (
-    id              VARCHAR(36) PRIMARY KEY,
-    user_id         VARCHAR(36) NOT NULL,
-    project_id      VARCHAR(36) NOT NULL,
-    worktree_path   VARCHAR(500) NOT NULL,          -- 로컬 worktree 경로
-    branch_name     VARCHAR(255) NOT NULL,          -- worktree 브랜치명
-    status          ENUM('active', 'inactive', 'archived') DEFAULT 'active',
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_user_project (user_id, project_id)
-);
-
--- ============================================
 -- 설계 단계: Spec 입력 관리
 -- ============================================
 CREATE TABLE specs (
@@ -57,19 +33,16 @@ CREATE TABLE specs (
 -- ============================================
 -- Task 관리 (설계 → 개발 연결점)
 -- ============================================
--- test_data.tasks definition
-
 CREATE TABLE `tasks` (
   `id` varchar(36) NOT NULL,
   `project_id` varchar(36) NOT NULL,
   `spec_id` varchar(36) DEFAULT NULL,
-  `assigned_user_id` varchar(36) DEFAULT NULL,
   `title` varchar(500) NOT NULL,
   `description` text NOT NULL,
   `status` enum('plan_reviewing','confirmed','coding','reviewing','done','failed') DEFAULT 'plan_reviewing',
-  `acceptance_criteria` longtext DEFAULT NULL COMMENT 'task 성공 조건',
-  `target_files` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '작업해야하는 파일 경로',
-  `implementation_steps` longtext DEFAULT NULL,
+  `acceptance_criteria` json DEFAULT NULL COMMENT 'task 성공 조건',
+  `files_to_modify` json DEFAULT NULL COMMENT 'code agent가 실제 수정/생성한 파일 목록',
+  `implementation_steps` json DEFAULT NULL,
   `git_commit_hash` varchar(40) DEFAULT NULL,
   `started_at` datetime DEFAULT NULL COMMENT '시작 시분초',
   `completed_at` datetime DEFAULT NULL COMMENT '완료 시분초',
@@ -78,10 +51,8 @@ CREATE TABLE `tasks` (
   PRIMARY KEY (`id`),
   KEY `project_id` (`project_id`),
   KEY `spec_id` (`spec_id`),
-  KEY `assigned_user_id` (`assigned_user_id`),
   CONSTRAINT `tasks_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `tasks_ibfk_2` FOREIGN KEY (`spec_id`) REFERENCES `specs` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `tasks_ibfk_3` FOREIGN KEY (`assigned_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+  CONSTRAINT `tasks_ibfk_2` FOREIGN KEY (`spec_id`) REFERENCES `specs` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ============================================

@@ -86,10 +86,12 @@ def _build_prompt(spec_content: str, project: Project, use_guidemap: bool = True
     codebase_section = ""
     if project.local_repo_path:
         guidemap_ready = (
-            use_guidemap
-            and project.project_type == "existing"
-            and guidemap_exists(project.name)
+            use_guidemap and
+            project.project_type == "existing" and
+            guidemap_exists(project.name)
         )
+        
+        # guidemap이 없는 경우에만 전체 탐색
         if not guidemap_ready:
             codebase_section = load_prompt(
                 "codebase_section.md",

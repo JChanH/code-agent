@@ -8,10 +8,12 @@ $criteria_text
 ## Project Path
 $local_repo_path
 
+$files_section
 ## Steps
 
 1. **Read the implementation**
-   - Use Glob to find relevant files under `$local_repo_path`
+   - Read each file listed in **Modified Files** above directly using `read_file`
+   - If **Modified Files** is empty, use Glob to find relevant files under `$local_repo_path`
 
 2. **Write tests targeting the service layer**
    - Write a test file at: `$test_file_path`

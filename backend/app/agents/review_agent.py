@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 REVIEW_ENABLED = True
 
-# submit_review_result 도구 — SDK의 output_format=json_schema 대체
+# submit_review_result 도구
 _SUBMIT_TOOL: dict[str, Any] = {
     "name": "submit_review_result",
     "description": (
@@ -105,6 +105,12 @@ def _build_prompt(task: Task, project: Project) -> str:
         criteria_list = "\n".join(f"  - {c}" for c in task.acceptance_criteria)
         criteria_text = f"\n## Acceptance Criteria\n{criteria_list}\n"
 
+    files_section = ""
+    if task.files_to_modify:
+        base = project.local_repo_path.rstrip("/\\")
+        files_list = "\n".join(f"  - {base}/{f}" for f in task.files_to_modify)
+        files_section = f"\n## Modified Files (read these directly)\n{files_list}\n"
+
     test_file_path = _make_test_file_path(task, project)
     stack_instructions = _build_stack_instructions(project)
 
@@ -113,6 +119,7 @@ def _build_prompt(task: Task, project: Project) -> str:
         task_title=task.title,
         task_description=task.description,
         criteria_text=criteria_text,
+        files_section=files_section,
         local_repo_path=project.local_repo_path,
         test_file_path=test_file_path,
         stack_instructions=stack_instructions,
@@ -131,7 +138,6 @@ async def run_review_agent(
     :param project: 프로젝트 정보 (local_repo_path 포함)
     :param broadcast: WebSocket 브로드캐스트 콜백
     """
-    # TODO: 검증할 부분이 있어서 잠시 skip
     if not REVIEW_ENABLED:
         logger.info("review_agent skipped — auto-pass (task_id=%s)", task.id)
         return ReviewResult(

@@ -61,12 +61,33 @@ def _build_prompt(task: Task, project: Project, review_context: dict | None = No
     )
 
 
+def _extract_modified_files(history: list[dict], working_dir: str) -> list[str]:
+    """히스토리에서 write_file / edit_file 호출 경로를 추출해 상대 경로 목록으로 반환합니다."""
+    seen: dict[str, None] = {}
+    base = working_dir.rstrip("/\\")
+    for msg in history:
+        if msg.get("role") != "assistant":
+            continue
+        for block in msg.get("content", []):
+            if block.get("type") != "tool_use":
+                continue
+            if block.get("name") not in ("write_file", "edit_file"):
+                continue
+            path: str = block.get("input", {}).get("path", "")
+            if not path:
+                continue
+            if path.startswith(base):
+                path = path[len(base):].lstrip("/\\")
+            seen[path] = None
+    return list(seen)
+
+
 async def run_code_agent(
     task: Task,
     project: Project,
     review_context: dict | None = None,
     broadcast: BroadcastFn | None = None,
-) -> None:
+) -> list[str]:
     """
     Task를 구현하고 테스트를 작성합니다.
 
@@ -74,6 +95,7 @@ async def run_code_agent(
     :param project: 프로젝트 정보 (local_repo_path 포함)
     :param review_context: 이전 리뷰 실패 결과 (재시도 시 주입)
     :param broadcast: WebSocket 브로드캐스트 콜백
+    :return: 실제 수정/생성된 파일 경로 목록 (local_repo_path 기준 상대 경로)
     """
     prompt = _build_prompt(task, project, review_context)
 
@@ -84,7 +106,7 @@ async def run_code_agent(
         if broadcast:
             await broadcast(msg_agent_message(payload, task_id=task.id, agent="code"))
 
-    await run_agent_loop(
+    _, history = await run_agent_loop(
         client=client,
         model="claude-sonnet-4-6",
         messages=[{"role": "user", "content": prompt}],
@@ -93,3 +115,5 @@ async def run_code_agent(
         working_dir=project.local_repo_path,
         on_message=on_message,
     )
+
+    return _extract_modified_files(history, project.local_repo_path)

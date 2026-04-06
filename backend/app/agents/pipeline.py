@@ -72,12 +72,21 @@ async def _run_task_inner(task_id: str) -> None:
         await broadcast(msg_task_update(task_id, "coding", attempt=attempt))
 
         try:
-            await run_code_agent(task, project, review_context=review_context, broadcast=broadcast)
+            modified_files = await run_code_agent(task, project, review_context=review_context, broadcast=broadcast)
         except Exception as exc:
             logger.exception("code_agent failed (task=%s, attempt=%d): %s", task_id, attempt, exc)
             await _update_task_status(task_id, "failed")
             await broadcast(msg_task_update(task_id, "failed", error=str(exc)))
             return
+
+        # code agent가 수정한 파일 목록을 DB에 저장 후 task 객체 갱신
+        if modified_files:
+            async with db_conn.transaction() as session:
+                t = await task_repository.find_by_id(task_id, session)
+                if t:
+                    t.files_to_modify = modified_files
+                    await session.flush()
+            task = await task_repository.find_by_id(task_id) or task
 
         # ── 2. Review phase ───────────────────────────────────────────────────
         await _update_task_status(task_id, "reviewing")

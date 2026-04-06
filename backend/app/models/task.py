@@ -44,6 +44,9 @@ class Task(Base):
     # 적용 순서
     implementation_steps: Mapped[Optional[Any]] = mapped_column(JSON)
 
+    # code agent가 실제 수정/생성한 파일 목록 (review agent가 참조)
+    files_to_modify: Mapped[Optional[Any]] = mapped_column(JSON)
+
     # task 상태
     status: Mapped[str] = mapped_column(
         Enum(
