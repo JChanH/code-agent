@@ -20,6 +20,11 @@ class RedisClient:
         self._client = aioredis.Redis(connection_pool=self._pool)
         logger.info("Redis connected: %s", self._url)
 
+    async def ensure_connected(self) -> None:
+        """이미 연결되어 있으면 스킵, 아니면 connect()를 호출합니다."""
+        if not self._client:
+            await self.connect()
+
     async def close(self) -> None:
         if self._client:
             await self._client.aclose()

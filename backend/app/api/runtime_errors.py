@@ -1,7 +1,9 @@
 """Runtime errors API router."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.redis import redis_client
+from app.redis.consumer import error_consumer
 from app.schemas.common import ApiResponse
 from app.schemas.runtime_error import RuntimeErrorListResponse, RuntimeErrorResponse, RuntimeErrorStatusUpdate
 from app.services import runtime_errors_service
@@ -9,8 +11,15 @@ from app.services import runtime_errors_service
 runtime_errors_router = APIRouter(prefix="/runtime-errors", tags=["runtime-errors"])
 
 
+async def _ensure_redis() -> None:
+    """런타임 에러 페이지 접근 시 Redis 연결을 확인하고, consumer가 꺼져 있으면 시작합니다."""
+    await redis_client.ensure_connected()
+    if not error_consumer.is_running:
+        error_consumer.start()
+
+
 # 모든 오류 리스트 조회
-@runtime_errors_router.get("")
+@runtime_errors_router.get("", dependencies=[Depends(_ensure_redis)])
 async def list_all_errors(
     limit: int = 50,
     offset: int = 0
@@ -28,7 +37,7 @@ async def list_all_errors(
 
 
 # 프로젝트별 오류 리스트 조회
-@runtime_errors_router.get("/project/{project_id}")
+@runtime_errors_router.get("/project/{project_id}", dependencies=[Depends(_ensure_redis)])
 async def list_errors_by_project(
     project_id: str,
     limit: int = 50,
@@ -47,7 +56,7 @@ async def list_errors_by_project(
 
 
 # 오류 상태값 변경
-@runtime_errors_router.patch("/{error_id}/status")
+@runtime_errors_router.patch("/{error_id}/status", dependencies=[Depends(_ensure_redis)])
 async def update_error_status(
     error_id: str,
     body: RuntimeErrorStatusUpdate

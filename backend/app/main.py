@@ -41,8 +41,6 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await redis_client.connect()
-    error_consumer.start()
     yield
     await error_consumer.stop()
     await redis_client.close()
